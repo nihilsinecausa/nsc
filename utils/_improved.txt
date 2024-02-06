@@ -1,0 +1,25 @@
+nsh.sh Script (Verfahren zum optimierten Kopieren von Musikdateien)
+Datenträger_ < Name und Art des Datenträgers auf dem die improvten Dateien landen sollen >
+Durchlauf Nr. 
+Datum: 
+Ort: < Ort an dem der Linux-Rechner stand bei der Session >
+
+[0 = nein, 1 = ja] 
+Ausführender Rechner: < Rechnername >
+WLAN on Board: 0
+DietPi optimiert mit max CPU Frequenz auf genau 1000 MHz eingestellt
+grup: Die Rechenkerne bis auf 0 sind ruhig gestellt
+Aufruf des Improvefile-Verfahrens mit taskset -c 1
+Stromversorgung: 
+Verbindung: 
+Regler: 
+Netzwerkverbindung:
+HDMI Verbindung: 0
+Maus und Tastatur: 0
+Fritz Repeater WLAN: 0
+G-Switch: 1
+
+Hier können nun beliebige weitere Angaben gemacht werden, unter welchen Bedingungn die Session
+stattgefunden hat, z.B. die Parameter, wie sie in der Datei _config.txt stehen.
+
+Diese Datei wird in jedes improvte Album-Verzeichnis kopiert.

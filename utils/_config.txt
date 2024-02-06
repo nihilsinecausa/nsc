@@ -1,0 +1,47 @@
+# Config-Datei zum Setzen von Variablen-Werten für die nsc.sh Scriptverarbeitung
+# Werden Variablen hier nicht belegt oder die Datei nicht gefunden, werden 
+# Default-Werte genommen.
+#
+# Anzahl der improvefile-Durchläufe pro Audiodatei, Mindestwert: 2
+NMAX=128
+
+# Variablen für das bufhrt Verfahren. 
+# Folgender Satz von Variablen mit der Vorsilbe "FAST" wird für die schnellen Durchläufe NMAX-1 verwendet, 
+# bei welchen auf die temporäre Ramdisk geschrieben wird
+
+# Puffer im RAM für das bufhrt-Verfahren selbst, default 536870912
+FAST_BUFFER_SIZE=536870912
+
+# Schleifenrate: Diesen Wert so setzen, dass möglichst wenige "delayed block" Meldungen ausgegeben werden, default 2000
+FAST_LOOPS_PER_SECOND=16384
+
+# Bytes pro Sekunde: Dieser Wert bestimmt die Laufzeit, default 8192000
+FAST_BYTES_PER_SECOND=536870912
+
+# Wert zum Schreiben auf den Zieldatenträger, hier Ramdisk, default 100
+FAST_DSYNCS_PER_SECOND=16384
+
+# Refreshs im L1 Cache der CPU, bevor auf den Datenträger geschrieben wird, default 3
+FAST_NR_REFRESHS=1
+
+# Folgender Satz von Variablen mit der Vorsilbe "SLOW" wird für den letzten langsamen Durchlauf verwedet, 
+# bei welchem auf das Zielmedium geschrieben wird. Erläuterungen und default-Werte s.o. bei "FAST"
+
+SLOW_BUFFER_SIZE=536870912
+SLOW_LOOPS_PER_SECOND=16384
+SLOW_BYTES_PER_SECOND=33554432
+SLOW_DSYNCS_PER_SECOND=16384
+SLOW_NR_REFRESHS=1
+
+# Wartezeiten. Hier können die betreffenden Sekundenwerte angegeben werden. Auch 0 ist erlaubt.
+
+# Wie viele Sekunden soll das Script warten, bevor die ersten Schreibvorgänge gestartet werden?
+# (z.B. um Schaltnetzteile auszuschalten), default 60
+LSLEEP=1
+
+# Kurzschlaf, default 5 
+FSLEEP=5
+
+# Ultra-Kurzsschlaf, default 1
+UFSLEEP=1
+
