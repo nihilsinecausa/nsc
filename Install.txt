@@ -1,0 +1,40 @@
+Dieses nsc Script-Paket dient zur Unterstützung von improvefile auf einem Linux-Rechner
+Es basiert auf frankl's stereo utilities. Es gilt die GNU License (cf License.txt)
+
+Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
+
+
+    VORAUSSETZUNGEN
+
+- Linux System (z.B. DietPi, Arch), GUI dabei nicht erforderlich
+- Die Software von frankl muss installiert sein, damit die Scripte später laufen.
+  https://github.com/frankl-audio/frankl_stereo.git
+
+
+    VORBEMERKUNG ZUR INSTALLATION
+
+Da für die Ausführung der Scripte root-Rechte erforderlich sind, wird empfohlen, 
+sowohl Installation als auch Bedienung des Script-Pakets als root auszuführen.
+Für die Installation empfiehlt sich daher das Verzeichnis /root
+
+
+    INITIALE INSTALLATION
+
+cd /root
+git clone https://github.com/nihilsinecausa/nsc.git
+cd nsc
+cp bin/* /usr/local/bin
+
+
+    ÜBERPRÜFUNG AUF UPDATES
+
+cd /root/nsc
+git status
+
+
+    INSTALLATION VON UPDATES
+
+cd /root/nsc
+git pull
+cp bin/* /usr/local/bin
+
