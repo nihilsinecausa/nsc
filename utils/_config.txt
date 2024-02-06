@@ -2,8 +2,11 @@
 # Werden Variablen hier nicht belegt oder die Datei nicht gefunden, werden 
 # Default-Werte genommen.
 #
-# Anzahl der improvefile-Durchläufe pro Audiodatei, Mindestwert: 2
-NMAX=128
+# Anzahl der improvefile-Durchläufe pro Audiodatei
+# für schnelle Improvefile-Durchläufe im RAM, Wert muss >= 2 sein, default 9
+NMAX_RAM=9
+# für langsame Improvefile-Durchläufe auf dem Zieldatenträger, Wert muss >=3 sein, default 3
+NMAX_PHYS=3
 
 # Variablen für das bufhrt Verfahren. 
 # Folgender Satz von Variablen mit der Vorsilbe "FAST" wird für die schnellen Durchläufe NMAX-1 verwendet, 

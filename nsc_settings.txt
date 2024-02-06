@@ -1,0 +1,35 @@
+# Datei zum Setzen von Variablen-Werten für die Scriptverarbeitung
+# Werden Variablen hier nicht belegt oder wird die Datei nicht gefunden, so werden 
+# Default-Werte genommen.
+#
+# Diese Datei wird auf Linux-Ebene gelesen, bevor Laufwerke gemountet werden. 
+# Die Einstellungen hier nur ändern, wenn man sich sicher ist!
+#
+# Quellverzeichnis für die Album-Verzeichnisse, die improvt werden sollen, default: "_source"
+SOURCE_DIR="_source"
+# Zielverzeichnis für die Album-Verzeichnisse, default "_improved"
+TARGET_DIR="_improved"
+# Verzeichnis für die Hilfsdateien "_config.txt" und "_improved.txt", default: "_etc"
+ETC_DIR="_etc"
+# Name für die Configdatei, die im optional in den Ordner ETC_DIR abgelegt werden kann, default: "_config.txt"
+CONFIGFILE="_config.txt"
+# Name für die Hilfsdatei "_improved", die in jedes improvte Albumverzeichnis kopiert wird, sofern sie vorhanden ist; default: "_improved.txt"
+INFOFILE="_improved.txt"
+
+# Gemaäß Standard werden die externen Laufwerke vom Hauptscript automatisch gemountet.
+# Für den Fall, dass man das nicht möchte, kann man das hier konfigurieren.
+# Dann aber müssen die folgenden Variablen für die Pfadnamen korrekt belegt werden.
+#
+# Soll automatisch gemountet werden? 1 für "ja", 0 für "nein", default =1
+AUTO_MOUNT=0
+#
+# Quellpfad für die zu improvenden Dateien
+SOURCE_PATH="/mnt/target/_source/"
+# Pfad für Hilsfdateien wie _config.txt
+ETC_PATH="/mnt/target/_etc/"
+# Zielpfad für die improvten Dateien
+TARGET_PATH="/mnt/target/_improved/"
+# Pfad für temporär improvte Dateien
+TARGET_TMP_PATH="/mnt/target/_tmp_improved/"
+# Pfad zum mounten und unmounten des Ziellaufwerks
+MPATH="/mnt/target"

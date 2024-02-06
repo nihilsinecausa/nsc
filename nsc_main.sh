@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRIPTTEXT="Script nsc_main.sh, Version vom 04.02.2024"
+SCRIPTTEXT="Script nsc.sh, Version vom 06.02.2024"
 SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad speichern zu können
 # basierend auf frankl-stereo utils (GNU Licence)
 # Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
@@ -12,15 +12,15 @@ SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad
 # Vorausetzungen:
 # - Ein oder zwei Datenträger sind mit dem Linux-Rechner physisch verbunden (z.B. über USB)
 # - Auf diesem(n) Datenträger(n) befinden sich folgende Verzeichnisse:
-#       "_nsc_source" --> Quelle für die zu improvenden Dateien
-#       "_nsc_etc"    --> Quelle für die Steuerdatei _nsc_config.txt sowie die für Infodatei _nsc_improved.txt
-#       "_nsc_target" --> Ziel für die improvten Dateien
-# - Dabei können "_nsc_source" und "_nsc_target" auf unterschiedlichen Datenträgern liegen.
-#       "_nsc_etc" aber muss auf demselben Datenträger liegen wie "_nsc_source". )
-# - Das Script liest Vorgaben für die Parameter aus der Datei "_nsc_config.txt", falls eine solche
-#       Datei im Ordner "_nsc_etc" liegt. Anderenfalls verwendet das Script die default-Werte von frankl.
-# - Das Script kopiert die Datei "_nsc_improved.txt" in die jeweiligen Musikordner im Zielverzeichnis,
-#       sofern eine solche Datei im Ordner "_nsc_etc" vorhanden ist.
+#       "_source" --> Quelle für die zu improvenden Dateien
+#       "_etc"    --> Quelle für die Steuerdatei _nsc_config.txt sowie die für Infodatei _nsc_improved.txt
+#       "_improved" --> Ziel für die improvten Dateien
+# - Dabei können "_source" und "_improved" auf unterschiedlichen Datenträgern liegen.
+#       "_etc" aber muss auf demselben Datenträger liegen wie "_source". )
+# - Das Script liest Vorgaben für die Parameter aus der Datei "_config.txt", falls eine solche
+#       Datei im Ordner "_etc" liegt. Anderenfalls verwendet das Script die default-Werte von frankl.
+# - Das Script kopiert die Datei "_improved.txt" in die jeweiligen Musikordner im Zielverzeichnis,
+#       sofern eine solche Datei im Ordner "_etc" vorhanden ist.
 #       In dieser Datei kann man (optional) die Bedingungen des Improvements individuell dokumentieren.
 
 
@@ -30,15 +30,25 @@ SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad
 # Hilfsvariable für das Script
 START_TIME=$(date +%s)
 SLASH='/'
-CONFIGFILE="_nsc_config.txt"
-INFOFILE="_nsc_improved.txt"
 TODAY=$(date +"%Y-%m-%d_%H-%M")
 LOGFILE=$TODAY"_log.txt"
 drive_count=1
 mounted_directories=()
 TMP=tmp
 TMP0=tmp0
+TMP1=tmp1
 SIZE=2097152 # entspricht 2 GiB in kB
+
+# Default-Werte für die Script-Steuerung (kann über die nsc_config.txt Datei geändert werden)
+SETTINGS="nsc_settings.txt"
+AUTO_MOUNT=1
+SOURCE_DIR="_source"
+ETC_DIR="_etc"
+TARGET_DIR="_improved"
+TARGET_TMP_DIR="_tmp_improved"
+
+CONFIGFILE="_config.txt"
+INFOFILE="_improved.txt"
 
 # Hilfsvariable für die RAM Laufwerke
 WPATH=""
@@ -51,7 +61,9 @@ DEV_RAM_PATH="/dev/ram"
 MNT_RAM_PATH="/mnt/ram"
 
 # Default-Werte für das Verfahren
-NMAX=2
+NMAX_RAM=9
+NMAX_PHYS=3
+NMAX=$((NMAX_RAM + NMAX_PHYS))
 FAST_BUFFER_SIZE=536870912
 FAST_LOOPS_PER_SECOND=2000
 FAST_BYTES_PER_SECOND=8192000
@@ -71,6 +83,9 @@ IMPROVED_FILES_SIZE=0
 TO_BE_IMPROVED_FILES_SIZE=0
 NEWLY_IMPROVED_FILES_SIZE=0
 
+# Hilfsvariable für mount und unmount
+MAX_M_ATTEMPTS=10
+M_ATTEMPT=0
 
 # Improvefile-Aufruf --> später verwenden
 schaffwas_fast(){
@@ -105,11 +120,15 @@ nsc_cleanup()
     # Kopiere nohup.out in den Logfile
     cp -v nohup.out $ETC_PATH$LOGFILE
 
-    # Unmounte alle im Skript gemounteten Verzeichnisse
-    for dir in "${mounted_directories[@]}"; do
-        umount "$dir"
-        echo "Unmounting: $dir"
-    done
+    if [ $AUTO_MOUNT -eq 1 ]; then
+        # Unmounte alle im Skript gemounteten Verzeichnisse
+        for dir in "${mounted_directories[@]}"; do
+            umount "$dir"
+            echo "Unmounting: $dir"
+        done
+    else
+        echo "Da Auto-Mount ausgeschaltet ist, wird kein umount externer Datenträger vorgenommen."
+    fi
 }
 
 # Config-Infos ausgeben
@@ -130,11 +149,17 @@ print_basic_info()
     pwd
     echo -n "Quellverzeichnis: "
     echo "$SOURCE_PATH"
-    echo -n "Zielverzeichnis: "
-    echo "$TARGET_PATH"
     echo -n "Verzeichnis für Zusatzdateien: "
     echo "$ETC_PATH"
+    echo -n "Zielverzeichnis: "
+    echo "$TARGET_PATH"
+    echo -n "Verzeichnis für temporär improvte Dateien: "
+    echo "$TARGET_TMP_PATH"
     echo ""
+    echo -n "Anzahl der schnellen Durchläufe für jede Musikdatei: NMAX_RAM="
+    echo $NMAX_RAM
+    echo -n "Anzahl der langsamen Durchläufe für jede Musikdatei: NMAX_PHYS="
+    echo $NMAX_PHYS
     echo -n "Anzahl der Durchläufe für jede Musikdatei: NMAX="
     echo $NMAX
     echo -n "Puffergröße ind Bytes: FAST_BUFFER_SIZE="
@@ -198,53 +223,82 @@ check_bit_identity(){
     fi
 }
 
+# Sicherstelle, dass der im Argument übergebene Mount-Point undgemoutet udn wieder gemountet wird
+ensure_umount_and_mount(){
+    MPATH_TARGET="$1"
+    M_ATTEMPT=0
+
+    while true; do
+        echo "Schleifendurchlauf Nr. $M_ATTEMPT"
+
+        mount $MPATH_TARGET
+        if [ $? -eq 0 ]; then
+            echo "mount erfolgreich durchgeführt"
+            break;
+        else
+            umount $MPATH_TARGET
+            if [ $? -eq 0 ]; then
+                echo "umount erfolgreich durchgeführt, nach Kurzschlaf weiter in der while Schleife"
+                sleep $FSLEEP
+            fi
+        fi
+
+        M_ATTEMPT=$((M_ATTEMPT + 1))
+
+        if [ $M_ATTEMPT -eq $MAX_M_ATTEMPTS ]; then
+            echo "Mächtig schwerer Fehler! Umount und Mount nicht sicher möglich"
+            break;    # optional exit 1
+        fi
+    done
+}
+
 # Funktionen zur Ramdisk-Behandlung
 # Neue alternative Methode zur Behandlung des ram.
-#create_ram(){
-#    N_LOC="$1"
-#    echo "create_ram mit Parameter $1 nach neuer Methode aufgerufen."
-#    WPATH_PRE="$WPATH"
-#    if [ "$((N_LOC % 2))" -eq 0 ]; then
-#        WPATH="/mnt/nscram0/"
-#    else
-#        WPATH="/mnt/nscram1/"
-#    fi
-#}
+create_ram(){
+    N_LOC="$1"
+    echo "create_ram mit Parameter $1 nach neuer Methode aufgerufen."
+    WPATH_PRE="$WPATH"
+    if [ "$((N_LOC % 2))" -eq 0 ]; then
+        WPATH="/mnt/nscram0/"
+    else
+        WPATH="/mnt/nscram1/"
+    fi
+}
 
-#destroy_ram(){
-#    N_LOC="$1"
-#    echo "destroy_ram mit Parameter $1 nach neuer Methode aufgerufen."
-#    if [ "$((N_LOC % 2))" -eq 0 ]; then
-#        umount -v /mnt/nscram0/
-#        sleep $UFSLEEP
-#    else
-#        umount -v /mnt/nscram1/
-#        sleep $UFSLEEP
-#    fi
-#}
+destroy_ram(){
+    N_LOC="$1"
+    echo "destroy_ram mit Parameter $1 nach neuer Methode aufgerufen."
+    if [ "$((N_LOC % 2))" -eq 0 ]; then
+        umount -v /mnt/nscram0/
+        sleep $UFSLEEP
+    else
+        umount -v /mnt/nscram1/
+        sleep $UFSLEEP
+    fi
+}
 
 # Methode von Horst
 # Erzeuge eine Ramdisk mit 2G Größe, Übergabeparameter: Nummer der RAM Disk beginnend mit 0
-create_ram(){
-    N_LOC="$1"
-    mke2fs -t ext2 -O extents -vm0 "$DEV_RAM_PATH$N_LOC" 2G -b 1024
-    sleep $UFSLEEP
-    mkdir -v "$MNT_RAM_PATH$N_LOC"
-    mount -v "$DEV_RAM_PATH$N_LOC" "$MNT_RAM_PATH$N_LOC"
-    sleep $UFSLEEP
-    chmod --verbose a+rwx "$MNT_RAM_PATH$N_LOC"
-    WPATH_PRE="$WPATH"
-    WPATH="$MNT_RAM_PATH$N_LOC$SLASH"
-}
+#create_ram(){
+#    N_LOC="$1"
+#    mke2fs -t ext2 -O extents -vm0 "$DEV_RAM_PATH$N_LOC" 2G -b 1024
+#    sleep $UFSLEEP
+#    mkdir -v "$MNT_RAM_PATH$N_LOC"
+#    mount -v "$DEV_RAM_PATH$N_LOC" "$MNT_RAM_PATH$N_LOC"
+#    sleep $UFSLEEP
+#    chmod --verbose a+rwx "$MNT_RAM_PATH$N_LOC"
+#    WPATH_PRE="$WPATH"
+#    WPATH="$MNT_RAM_PATH$N_LOC$SLASH"
+#}
 
 # Lösche die Ramdisk mit der entsprechenden Nummer
-destroy_ram(){
-    N_LOC="$1"
-    umount -v "$DEV_RAM_PATH$N_LOC"
-    sleep $UFSLEEP
-    rmdir -v "$MNT_RAM_PATH$N_LOC"
-    rm -v "$DEV_RAM_PATH$N_LOC"
-}
+#destroy_ram(){
+#    N_LOC="$1"
+#    umount -v "$DEV_RAM_PATH$N_LOC"
+#    sleep $UFSLEEP
+#    rmdir -v "$MNT_RAM_PATH$N_LOC"
+#    rm -v "$DEV_RAM_PATH$N_LOC"
+#}
 
 # Start der Scriptausgabe
 echo "############################################################################################"
@@ -252,53 +306,86 @@ echo "#                             SCRIPT nsc_main.sh GESTARTET                
 echo "############################################################################################"
 echo ""
 
+# Auslesen der Variablen aus der Datei "$SETTINGS", sofern diese vorhanden ist
+# sowie ggf. Überschreiben der default-Werte
+#CFILE="$ETC_PATH$CONFIGFILE"
+echo ""
+echo "Auslesen der Konfigurationsdatei $SETTINGS"
+
+# Überprüfen, ob die Datei existiert
+if [ -e "$SETTINGS" ]; then
+    # Schleife zum Lesen jeder Zeile in der Datei
+    while IFS= read -r line; do
+        # echo "habe Zeile $line gelesen"
+        # Leerzeilen und Kommentare ignorieren
+        if [[ -n "$line" && "$line" != \#* ]]; then
+            # Variablen setzen, indem wir die Zeile in Teile aufteilen (hier am "=")
+            key=$(echo "$line" | cut -d'=' -f1)
+            value=$(echo "$line" | cut -d'=' -f2-)
+
+            # Variablen setzen
+            declare "$key=${value//\"/}"
+
+            # Optional: Ausgabe der gesetzten Variablen
+            echo "$key=$value"
+        fi
+    done < "$SETTINGS"
+else
+    echo "Die Datei $SETTINGS existiert nicht. Es werden default-Parameter verwendet."
+fi
+
 # Setzen der Pfad-Varialben "SOURCE_PATH", "TARGET_PATH" und "ETC_PATH"
 # Durchlaufe alle nicht gemounteten Laufwerke
+echo ""
 echo "Mounten von Datenträgern und Auslesen wichtiger Pfade"
 echo ""
-for drive in $(lsblk -o NAME,MOUNTPOINT -nr | awk '$2 == "" {print $1}'); do
-    # Mounte das Laufwerk unter /mnt/nscX, wobei X die Laufwerksnummer ist
-    mount_point="/mnt/nsc$drive_count"
-    mkdir -p "$mount_point"
 
-    # Mounte das Laufwerk
-    mount -v "/dev/$drive" "$mount_point"
+if [ $AUTO_MOUNT -eq 1 ]; then
+    for drive in $(lsblk -o NAME,MOUNTPOINT -nr | awk '$2 == "" {print $1}'); do
+        # Mounte das Laufwerk unter /mnt/nscX, wobei X die Laufwerksnummer ist
+        mount_point="/mnt/nsc$drive_count"
+        mkdir -p "$mount_point"
 
-    # Füge das gemountete Verzeichnis zur Liste hinzu
-    mounted_directories+=("$mount_point")
+        # Mounte das Laufwerk
+        mount -v "/dev/$drive" "$mount_point"
 
-    # Prüfe, ob das Verzeichnis /mnt/nscX/_nsc_source existiert
-    source_path="$mount_point/_nsc_source"
-    etc_path="$mount_point/_nsc_etc"
-    if [ -d "$source_path" ]; then
-        SOURCE_PATH="$source_path$SLASH"
-        ETC_PATH="$etc_path$SLASH"
-        echo "SOURCE_PATH set to $SOURCE_PATH"
-        echo "ETC_PATH set to $ETC_PATH"
-    fi
+        # Füge das gemountete Verzeichnis zur Liste hinzu
+        mounted_directories+=("$mount_point")
 
-    # Prüfe, ob das Verzeichnis /mnt/nscX/_nsc_target existiert
-    target_path="$mount_point/_nsc_target"
-    if [ -d "$target_path" ]; then
-        TARGET_PATH="$target_path$SLASH"
-        echo "TARGET_PATH set to $TARGET_PATH"
-    fi
+        # Prüfe, ob das Verzeichnis /mnt/nscX/_nsc_source existiert
+        source_path="$mount_point/$SOURCE_DIR"
+        etc_path="$mount_point/$ETC_DIR"
+        if [ -d "$source_path" ]; then
+            SOURCE_PATH="$source_path$SLASH"
+            ETC_PATH="$etc_path$SLASH"
+            echo "SOURCE_PATH set to $SOURCE_PATH"
+            echo "ETC_PATH set to $ETC_PATH"
+        fi
 
-    # Falls weder _nsc_source noch _nsc_target existieren, unmounte das Laufwerk
-    if [ ! -d "$target_path" ] && [ ! -d "$source_path" ]; then
-        # Weder $target_path noch $source_path existieren
-        echo "Weder $target_path noch $source_path existieren."
-        echo "$mount_point wird ungemountet"
-        umount -v "$mount_point"
-    fi
-    # Inkrementiere die Laufwerksnummer für das nächste Laufwerk
-    ((drive_count++))
-done
+        # Prüfe, ob das Verzeichnis /mnt/nscX/_nsc_target existiert
+        target_path="$mount_point/$TARGET_DIR"
+        target_tmp_path="$mount_point/$TARGET_TMP_DIR"
+        if [ -d "$target_path" ]; then
+            TARGET_PATH="$target_path$SLASH"
+            TARGET_TMP_PATH="$target_tmp_path$SLASH"
+            MPATH="$mount_point"
+            echo "TARGET_PATH set to $TARGET_PATH"
+        fi
 
+        # Falls weder _nsc_source noch _nsc_target existieren, unmounte das Laufwerk
+        if [ ! -d "$target_path" ] && [ ! -d "$source_path" ]; then
+            # Weder $target_path noch $source_path existieren
+            echo "Weder $target_path noch $source_path existieren."
+            echo "$mount_point wird ungemountet"
+            umount -v "$mount_point"
+        fi
+        # Inkrementiere die Laufwerksnummer für das nächste Laufwerk
+        ((drive_count++))
+    done
+fi
 
-# Auslesen der Variablen aus der Datei "_nsc_config", sofern diese vorhanden ist
+# Auslesen der Variablen aus der Datei "_config", sofern diese vorhanden ist
 # sowie ggf. Überschreiben der default-Werte
-
 CFILE="$ETC_PATH$CONFIGFILE"
 echo ""
 echo "Auslesen der Konfigurationsdatei $CFILE"
@@ -324,6 +411,10 @@ if [ -e "$CFILE" ]; then
 else
     echo "Die Datei $CFILE existiert nicht. Es werden default-Parameter verwendet."
 fi
+
+# Diese Berechnung muss zwingend nach dem Einlesen erfolgen.
+NMAX=$((NMAX_RAM + NMAX_PHYS))
+
 
 # Vorbereitung für das Ausgeben des laufenden Bearbeitungsstandes:
 IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
@@ -367,38 +458,41 @@ for DIR in "$SOURCE_PATH"/*; do
             echo "$FILENAME"
             echo ""
 
-            # Ramdisk bereitstellen
-            create_ram 0
-            N=0
-#            WPATH="$MNT_RAM_PATH$N$SLASH"
+            # große for-Schleife mit 5 zu unterscheidenden Fällen
+            for ((N=1; N<=NMAX; N++)); do
 
-            echo ""
-            echo "Erster improvefile-Durchlauf für diese Musikdatei (schnelles Verfahren)"
-            echo ""
-            # improvefile-Aufruf für die laufende Datei zum ersten Mal
-            schaffwas_fast "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP0"
-            check_bit_identity "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP0"
-
-            # Sicherstellen, dass die Datei $TMP0 nicht nur in den Cache geschrieben wird
-            sync
-            sleep $UFSLEEP
-            vmtouch -e "$WPATH$TMP0"
-            sleep $UFSLEEP
-
-            # For-Schleife für NMAX Mehrfachanwendung von improvefile je zu improvender Datei
-            for ((N=1; N<=NMAX - 1; N++)); do
-                if [[ $N -lt $(($NMAX - 1)) ]]
-                then
-                    # Schnelles Verfahren bis zum vorletzten Durchlauf
-                    NPRE=$(($N - 1))
+                # N = 1 von _source nach RAM
+                if [ $N -eq 1 ]; then
 
                     echo ""
-                    echo "Mehrfachanwendung von improvefile Nr. $N (schnelles Verfahren)"
+                    echo "Erster improvefile-Durchlauf für diese Musikdatei (schnelles Verfahren; von _source ins RAM)"
                     echo ""
 
- #                   WPATH_PRE="$WPATH"
+                    # Ramdisk bereitstellen
                     create_ram $N
- #                   WPATH="$MNT_RAM_PATH$N$SLASH"
+
+                    # improvefile-Aufruf für die laufende Datei zum ersten Mal
+                    schaffwas_fast "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
+                    check_bit_identity "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
+
+                    # Sicherstellen, dass die Datei $TMP1 nicht nur in den Cache geschrieben wird
+                    sync
+                    sleep $UFSLEEP
+                    vmtouch -e "$WPATH$TMP$N"
+                    sleep $UFSLEEP
+
+                # N >= NMAX_RAM von RAM nach RAM
+                elif [ $N -le $NMAX_RAM ]; then
+
+                    echo ""
+                    echo "Mehrfachanwendung von improvefile Nr. $N (schnelles Verfahren; von RAM nach RAM)"
+                    echo ""
+
+                    # Zähler und Ramdisk bereitstellen ($WPATH wird in create_ram belegt)
+                    NPRE=$(($N - 1))
+                    create_ram $N
+
+                    # improvefile-Aufruf
                     schaffwas_fast "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
                     check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
 
@@ -413,13 +507,70 @@ for DIR in "$SOURCE_PATH"/*; do
                     rm -v "$WPATH_PRE$TMP$NPRE"
                     destroy_ram $NPRE
 
-                else
-                    # Langsames Verfahren beim letzten Durchlauf
-                    NPRE=$(($NMAX - 2))
+                # N = NMAX_RAM + 1 von RAM nach phys-tmp
+                elif [ $N -eq $((NMAX_RAM + 1)) ]; then
 
                     echo ""
-                    echo "Letzter Durchlauf von improvefile (Nr. $N, langsames Verfahren)"
+                    echo "Mehrfachanwendung von improvefile Nr. $N (langsames Verfahren; von RAM nach phys-tmp)"
                     echo ""
+
+                    # Zähler und WPATH bereitstellen
+                    NPRE=$(($N - 1))
+                    WPATH_PRE="$WPATH"
+                    WPATH="$TARGET_TMP_PATH"
+
+                    # improvefile-Aufruf
+                    schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
+                    check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
+
+                    # Sicherstellen, dass die Datei $TMP$N nicht nur in den Cache geschrieben wird
+                    sync
+                    sleep $UFSLEEP
+                    vmtouch -e "$WPATH$TMP$N"
+                    sleep $UFSLEEP
+
+                    # Aufräumen in der Ramdisk
+                    shred "$WPATH_PRE$TMP$NPRE"
+                    rm -v "$WPATH_PRE$TMP$NPRE"
+                    destroy_ram $NPRE
+
+                # N > NMAX_RAM + 1 und N <= NMAX - 1 von phys-tmp nach phys-tmp
+                elif [ "$N" -gt "$((NMAX_RAM + 1))" ] && [ "$N" -le "$((NMAX - 1))" ]; then
+
+                    echo ""
+                    echo "Mehrfachanwendung von improvefile Nr. $N (langsames Verfahren; von phys-tmp nach phys-tmp)"
+                    echo ""
+
+                    # Zähler und WPATH bereitstellen
+                    NPRE=$(($N - 1))
+                    WPATH_PRE="$WPATH"
+                    WPATH="$TARGET_TMP_PATH"
+
+                    # improvefile-Aufruf
+                    schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
+                    check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
+
+                    # Sicherstellen, dass die Datei $TMP$N nicht nur in den Cache geschrieben wird
+                    sync
+                    sleep $UFSLEEP
+                    vmtouch -e "$WPATH$TMP$N"
+                    sleep $UFSLEEP
+
+                    # Aufräumen
+                    shred "$WPATH_PRE$TMP$NPRE"
+                    rm -v "$WPATH_PRE$TMP$NPRE"
+                    ensure_umount_and_mount "$MPATH"
+
+                # N = NMAX von phys-tmp nach _improved
+                else
+
+                    echo ""
+                    echo "Letzter Durchlauf von improvefile für diese Musikdatei (Nr. $N, langsames Verfahren, von phys-tmp nach _improved)"
+                    echo ""
+
+                    # Zähler und WPATH bereitstellen
+                    NPRE=$(($N - 1))
+                    WPATH_PRE="$WPATH"
 
                     echo "$WPATH$TMP$NPRE"
                     schaffwas_slow "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
@@ -434,7 +585,8 @@ for DIR in "$SOURCE_PATH"/*; do
                     # Aufräumen
                     shred "$WPATH$TMP$NPRE"
                     rm -v "$WPATH$TMP$NPRE"
-                    destroy_ram $NPRE
+                    ensure_umount_and_mount "$MPATH"
+
                     echo "improvefile-Anwendung für diese Musikdatei  abgeschlossen"
                 fi
             done
