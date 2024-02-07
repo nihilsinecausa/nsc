@@ -32,9 +32,13 @@ Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
 Alle Aufrufe als root 
 
-    "nsc.sh"
+    nsc.sh
 
 Damit startet das Hauptscript "nsc_main.sh" im Hintergrund und die Bearbeitung läuft automatisch ab.
+
+Alternativ kann man dynamisch generierte mit ext formatierte Ramdisks verwenden. Der Aufruf lautet dann
+
+    nsc_ext.sh
 
 Um einen Überblick über die Bearbeitung zu bekommen, kann man mit dem Aufruf
 

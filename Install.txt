@@ -25,6 +25,12 @@ git clone https://github.com/nihilsinecausa/nsc.git
 cd nsc
 cp bin/* /usr/local/bin
 
+Für die Standard-Ramdisk Methode benötigt das Scriptset zwei Ramdisks.
+Dazu folgende Zeilen in die fstab eintragen und anschließend rebooten
+    tmpfs    /mnt/nscram0    tmpfs    defaults,size=2048M    0    0
+    tmpfs    /mnt/nscram1    tmpfs    defaults,size=2048M    0    0
+Ein Beispiel fstab_example findet sich unter /root/nsc/utils
+
 
     ÜBERPRÜFUNG AUF UPDATES
 

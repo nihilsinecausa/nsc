@@ -9,6 +9,8 @@ SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad
 #
 # Der Aufruf dieses Scripts erfolgt aus dem  Script "nsc.sh" im Hintergrund und ohne Terminal-Ausgaben.
 #
+# Dieses Script verwendet dynamisch angelegte ext Ramdisks. Es benötigt daher keinen fstab Eintrag.
+#
 # Vorausetzungen:
 # - Ein oder zwei Datenträger sind mit dem Linux-Rechner physisch verbunden (z.B. über USB)
 # - Auf diesem(n) Datenträger(n) befinden sich folgende Verzeichnisse:
@@ -22,11 +24,6 @@ SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad
 # - Das Script kopiert die Datei "_improved.txt" in die jeweiligen Musikordner im Zielverzeichnis,
 #       sofern eine solche Datei im Ordner "_etc" vorhanden ist.
 #       In dieser Datei kann man (optional) die Bedingungen des Improvements individuell dokumentieren.
-# - Für die Standard-Ramdisk Methode benötigt das Script zwei Ramdisks.
-#       Dazu folgende Zeilen in die fstab eintragen und anschließend rebooten
-#       tmpfs    /mnt/nscram0    tmpfs    defaults,size=2048M    0    0
-#       tmpfs    /mnt/nscram1    tmpfs    defaults,size=2048M    0    0
-#
 
 #23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
 #        1         2         3         4         5         6         7         8         9
@@ -256,53 +253,28 @@ ensure_umount_and_mount(){
     done
 }
 
-# Funktionen zur Ramdisk-Behandlung
-# Neue alternative Methode zur Behandlung des ram.
+# Funktionen zur Behandlung von dynamisch angelegten ext Ramdisks (Anregung von Horst)
+# Erzeuge eine Ramdisk mit 2G Größe, Übergabeparameter: Nummer der RAM Disk beginnend mit 0
 create_ram(){
     N_LOC="$1"
-    echo "create_ram mit Parameter $1 nach neuer Methode aufgerufen."
+    mke2fs -t ext2 -O extents -vm0 "$DEV_RAM_PATH$N_LOC" 2G -b 1024
+    sleep $UFSLEEP
+    mkdir -v "$MNT_RAM_PATH$N_LOC"
+    mount -v "$DEV_RAM_PATH$N_LOC" "$MNT_RAM_PATH$N_LOC"
+    sleep $UFSLEEP
+    chmod --verbose a+rwx "$MNT_RAM_PATH$N_LOC"
     WPATH_PRE="$WPATH"
-    if [ "$((N_LOC % 2))" -eq 0 ]; then
-        WPATH="/mnt/nscram0/"
-    else
-        WPATH="/mnt/nscram1/"
-    fi
+    WPATH="$MNT_RAM_PATH$N_LOC$SLASH"
 }
-
-destroy_ram(){
-    N_LOC="$1"
-    echo "destroy_ram mit Parameter $1 nach neuer Methode aufgerufen."
-    if [ "$((N_LOC % 2))" -eq 0 ]; then
-        umount -v /mnt/nscram0/
-        sleep $UFSLEEP
-    else
-        umount -v /mnt/nscram1/
-        sleep $UFSLEEP
-    fi
-}
-
-# Methode von Horst
-# Erzeuge eine Ramdisk mit 2G Größe, Übergabeparameter: Nummer der RAM Disk beginnend mit 0
-#create_ram(){
-#    N_LOC="$1"
-#    mke2fs -t ext2 -O extents -vm0 "$DEV_RAM_PATH$N_LOC" 2G -b 1024
-#    sleep $UFSLEEP
-#    mkdir -v "$MNT_RAM_PATH$N_LOC"
-#    mount -v "$DEV_RAM_PATH$N_LOC" "$MNT_RAM_PATH$N_LOC"
-#    sleep $UFSLEEP
-#    chmod --verbose a+rwx "$MNT_RAM_PATH$N_LOC"
-#    WPATH_PRE="$WPATH"
-#    WPATH="$MNT_RAM_PATH$N_LOC$SLASH"
-#}
 
 # Lösche die Ramdisk mit der entsprechenden Nummer
-#destroy_ram(){
-#    N_LOC="$1"
-#    umount -v "$DEV_RAM_PATH$N_LOC"
-#    sleep $UFSLEEP
-#    rmdir -v "$MNT_RAM_PATH$N_LOC"
-#    rm -v "$DEV_RAM_PATH$N_LOC"
-#}
+destroy_ram(){
+    N_LOC="$1"
+    umount -v "$DEV_RAM_PATH$N_LOC"
+    sleep $UFSLEEP
+    rmdir -v "$MNT_RAM_PATH$N_LOC"
+    rm -v "$DEV_RAM_PATH$N_LOC"
+}
 
 # Start der Scriptausgabe
 echo "############################################################################################"
