@@ -15,7 +15,7 @@ Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
 Da für die Ausführung der Scripte root-Rechte erforderlich sind, wird empfohlen, 
 sowohl Installation als auch Bedienung des Script-Pakets als root auszuführen.
-Für die Installation empfiehlt sich daher das Verzeichnis /root
+Für die Installation empfiehlt sich daher das Verzeichnis /root. 
 
 
     INITIALE INSTALLATION
@@ -26,10 +26,18 @@ cd nsc
 cp bin/* /usr/local/bin
 
 Für die Standard-Ramdisk Methode benötigt das Scriptset zwei Ramdisks.
-Dazu folgende Zeilen in die fstab eintragen und anschließend rebooten
+Hierzu die Datei fstab editieren, z.B. mit dem Befehl
+
+nano /etc/fstab
+
+folgende Zeilen eintragen, abspeichern und anschließend rebooten
+
     tmpfs    /mnt/nscram0    tmpfs    defaults,size=2048M    0    0
     tmpfs    /mnt/nscram1    tmpfs    defaults,size=2048M    0    0
-Ein Beispiel fstab_example findet sich unter /root/nsc/utils
+
+Ein Beispiel für eine solche fstab-Datei kann man sich wie folgt ansehen:
+
+cat /root/nsc/utils/fstab_example
 
 
     ÜBERPRÜFUNG AUF UPDATES
