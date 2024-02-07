@@ -2,7 +2,12 @@ Dieses nsc Script-Paket dient zur Unterstützung von improvefile auf einem Linux
 Es basiert auf frankl's stereo utilities. Es gilt die GNU License (cf License.txt)
 Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
-07.02.2024
+07.02.2024 
+Änderzung der Hauptscripte, so dass die unterschiedlichen Ramdisk Methoden über Aufrufparameter geschaltet werden. 
+Das vermeidet zwei verschiedene Script-Sets. 
+Statusinformationen verbessert. Nun werden laufend Album, Musikdatei sowie der laufende Bearbeitungsstand ausgegeben.
+
+07.02.2024 
 Anleitung zur Einrichtung der fstab Einträge für die Standard-Ramdisk angepasst (siehe Install.txt)
 Zwei Scripte ergänzt zur Verwendung der alternativen Methode mit dynamisch generierten, ext formatierten Ramdisks (siehe Readme.txt)
 

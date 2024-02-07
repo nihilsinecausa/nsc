@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRIPTTEXT="Script nsc.sh, Version vom 06.02.2024"
+SCRIPTTEXT="Script nsc.sh, Version vom 07.02.2024"
 SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad speichern zu können
 # basierend auf frankl-stereo utils (GNU Licence)
 # Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
@@ -42,6 +42,20 @@ TMP=tmp
 TMP0=tmp0
 TMP1=tmp1
 SIZE=2097152 # entspricht 2 GiB in kB
+
+# Hilfsvarialbe für die unterschiedlichen Ramdisk-Methoden
+#Standardwert
+RAM_METHOD="tmpfs"
+# Überprüfen, ob ein Parameter übergeben wurde
+if [ $# -eq 1 ]; then
+    # Wenn ein Parameter übergeben wurde, setze RAM_METHOD auf den übergebenen Wert
+    RAM_METHOD="$1"
+fi
+# Beispiel: Wenn RAM_METHOD "ext" ist, führe eine bestimmte Aktion aus
+if [ "$RAM_METHOD" = "ext" ]; then
+    echo "Spezielle Aktion für ext."
+fi
+
 
 # Default-Werte für die Script-Steuerung (kann über die nsc_config.txt Datei geändert werden)
 SETTINGS="nsc_settings.txt"
@@ -141,6 +155,7 @@ print_basic_info()
     echo ""
     echo "Ermittelte Basis-Informationen"
     echo ""
+    echo "Ramdisk-Methode ist auf $RAM_METHOD gesetzt."
     echo -n "Version: "
     echo "$SCRIPTTEXT"
     CURRENT_TIME=$(date +"%H:%M")
@@ -214,6 +229,22 @@ print_status()
     echo "$PROGRESS % von 100 %"
 }
 
+print_kurzstatus()
+{
+    echo "Kurze Status-Info"
+    echo -n "Album-Verzeichnis: "
+    echo "$DIRNAME"
+    echo -n "Musikdatei: "
+    echo "$FILENAME"
+
+    echo -n "Aktueller Stand der Bearbeitung (ca.-Angaben):"
+    IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
+    NEWLY_IMPROVED_FILES_SIZE=$((IMPROVED_FILES_SIZE - FORMER_IMPROVED_FILES_SIZE))
+    PROGRESS=$((NEWLY_IMPROVED_FILES_SIZE *100 / TO_BE_IMPROVED_FILES_SIZE))
+    echo "$PROGRESS % von 100 %"
+    echo ""
+}
+
 # Fundamentale Funktion zur Überprüfung der Bit-Identität
 check_bit_identity(){
     if cmp -s "$1" "$2"; then
@@ -260,24 +291,44 @@ ensure_umount_and_mount(){
 # Neue alternative Methode zur Behandlung des ram.
 create_ram(){
     N_LOC="$1"
-    echo "create_ram mit Parameter $1 nach neuer Methode aufgerufen."
-    WPATH_PRE="$WPATH"
-    if [ "$((N_LOC % 2))" -eq 0 ]; then
-        WPATH="/mnt/nscram0/"
+    if [ "$RAM_METHOD" = "tmpfs" ]; then
+        echo "create_ram mit Parameter $1 nach tmpfs Methode aufgerufen."
+        WPATH_PRE="$WPATH"
+        if [ "$((N_LOC % 2))" -eq 0 ]; then
+            WPATH="/mnt/nscram0/"
+        else
+            WPATH="/mnt/nscram1/"
+        fi
     else
-        WPATH="/mnt/nscram1/"
+        echo "create_ram mit Parameter $1 nach tmpfs Methode aufgerufen."
+        mke2fs -t ext2 -O extents -vm0 "$DEV_RAM_PATH$N_LOC" 2G -b 1024
+        sleep $UFSLEEP
+        mkdir -v "$MNT_RAM_PATH$N_LOC"
+        mount -v "$DEV_RAM_PATH$N_LOC" "$MNT_RAM_PATH$N_LOC"
+        sleep $UFSLEEP
+        chmod --verbose a+rwx "$MNT_RAM_PATH$N_LOC"
+        WPATH_PRE="$WPATH"
+        WPATH="$MNT_RAM_PATH$N_LOC$SLASH"
     fi
 }
 
 destroy_ram(){
     N_LOC="$1"
-    echo "destroy_ram mit Parameter $1 nach neuer Methode aufgerufen."
-    if [ "$((N_LOC % 2))" -eq 0 ]; then
-        umount -v /mnt/nscram0/
-        sleep $UFSLEEP
+    if [ "$RAM_METHOD" = "tmpfs" ]; then
+        echo "destroy_ram mit Parameter $1 nach tmpfs Methode aufgerufen."
+        if [ "$((N_LOC % 2))" -eq 0 ]; then
+            umount -v /mnt/nscram0/
+            sleep $UFSLEEP
+        else
+            umount -v /mnt/nscram1/
+            sleep $UFSLEEP
+        fi
     else
-        umount -v /mnt/nscram1/
+        echo "destroy_ram mit Parameter $1 nach ext Methode aufgerufen."
+        umount -v "$DEV_RAM_PATH$N_LOC"
         sleep $UFSLEEP
+        rmdir -v "$MNT_RAM_PATH$N_LOC"
+        rm -v "$DEV_RAM_PATH$N_LOC"
     fi
 }
 
@@ -416,7 +467,9 @@ else
     echo "Die Datei $CFILE existiert nicht. Es werden default-Parameter verwendet."
 fi
 
-# Diese Berechnung muss zwingend nach dem Einlesen erfolgen.
+# Diese Berechnungen müssen nach dem Einlesen erfolgen.
+FORMER_IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
+TO_BE_IMPROVED_FILES_SIZE=$(du -s "$SOURCE_PATH" | awk '{print $1}')
 NMAX=$((NMAX_RAM + NMAX_PHYS))
 
 
@@ -458,9 +511,11 @@ for DIR in "$SOURCE_PATH"/*; do
             # set each file name to the 'FILENAME' variable
             FILENAME=$(basename "$FILE")
             echo""
+            echo "Status: Bearbeitung des Album-Verzeichnisses: "
+            echo "$DIRNAME"
+            echo ""
             echo "Folgende Musikdatei wird gleich improvt: "
             echo "$FILENAME"
-            echo ""
 
             # große for-Schleife mit 5 zu unterscheidenden Fällen
             for ((N=1; N<=NMAX; N++)); do
@@ -469,8 +524,10 @@ for DIR in "$SOURCE_PATH"/*; do
                 if [ $N -eq 1 ]; then
 
                     echo ""
+                    echo ""
                     echo "Erster improvefile-Durchlauf für diese Musikdatei (schnelles Verfahren; von _source ins RAM)"
                     echo ""
+                    print_kurzstatus
 
                     # Ramdisk bereitstellen
                     create_ram $N
@@ -489,8 +546,10 @@ for DIR in "$SOURCE_PATH"/*; do
                 elif [ $N -le $NMAX_RAM ]; then
 
                     echo ""
+                    echo ""
                     echo "Mehrfachanwendung von improvefile Nr. $N (schnelles Verfahren; von RAM nach RAM)"
                     echo ""
+                    print_kurzstatus
 
                     # Zähler und Ramdisk bereitstellen ($WPATH wird in create_ram belegt)
                     NPRE=$(($N - 1))
@@ -515,8 +574,10 @@ for DIR in "$SOURCE_PATH"/*; do
                 elif [ $N -eq $((NMAX_RAM + 1)) ]; then
 
                     echo ""
+                    echo ""
                     echo "Mehrfachanwendung von improvefile Nr. $N (langsames Verfahren; von RAM nach phys-tmp)"
                     echo ""
+                    print_kurzstatus
 
                     # Zähler und WPATH bereitstellen
                     NPRE=$(($N - 1))
@@ -542,8 +603,10 @@ for DIR in "$SOURCE_PATH"/*; do
                 elif [ "$N" -gt "$((NMAX_RAM + 1))" ] && [ "$N" -le "$((NMAX - 1))" ]; then
 
                     echo ""
+                    echo ""
                     echo "Mehrfachanwendung von improvefile Nr. $N (langsames Verfahren; von phys-tmp nach phys-tmp)"
                     echo ""
+                    print_kurzstatus
 
                     # Zähler und WPATH bereitstellen
                     NPRE=$(($N - 1))
@@ -569,8 +632,10 @@ for DIR in "$SOURCE_PATH"/*; do
                 else
 
                     echo ""
+                    echo ""
                     echo "Letzter Durchlauf von improvefile für diese Musikdatei (Nr. $N, langsames Verfahren, von phys-tmp nach _improved)"
                     echo ""
+                    print_kurzstatus
 
                     # Zähler und WPATH bereitstellen
                     NPRE=$(($N - 1))
