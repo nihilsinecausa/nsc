@@ -2,6 +2,16 @@ Dieses nsc Script-Paket dient zur Unterstützung von improvefile auf einem Linux
 Es basiert auf frankl's stereo utilities. Es gilt die GNU License (cf License.txt)
 Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
+09.02.2924
+Änderung der Hauptscripte. 
+- Unterschiedliche Ramdisk-Methoden lassen sich jetzt über die _config.txt Datei umschalten. 
+  Übergabemechanisnus beim Aufruf aus letzter Version wurde entfernt.
+- Die Standard-Ordnernamen wurden noch einmal geändert. (siehe Readme.txt)
+- Eine Beispiel-Ordnerstruktur wurde hinzugefügt. Diese kann als Template auf Musikdatenträger kopiert werden.
+- Fehler beim Unmounten und Mounten wurden korrigiert. Automatisches Mounten verbessert. 
+- Der Ordner für die temporäre Ablage von Dateien auf dem Zieldatenträger wird nun vom Hauptscript erstellt und wieder gelöscht.
+- Überbleibsel in Temp-Ordnern (sowohl im RAM als auch auf dem Zieldatenträger) werden ggf. gelöscht.
+
 07.02.2024 
 Änderzung der Hauptscripte, so dass die unterschiedlichen Ramdisk Methoden über Aufrufparameter geschaltet werden. 
 Das vermeidet zwei verschiedene Script-Sets. 

@@ -14,6 +14,32 @@ Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
     VORBEREITUNGEN (GGF. AUF WINDOWS-EBENE)
 
+- Es können ein oder zwei Datenträger verwendet werden. Das Scriptset prüft im Auto-Mount
+  Modus (default) nach, welche Datenträger angeschlossen sind, mountet sie automatisch
+  und überprüft dabei, ob die Ordner mit den hier verwendeten Namen vorhanden sind.
+  Werden die Namen nicht gefunden, dann läuft das Scriptset auf Fehler und endet.
+
+- Die Verzeichnisse "_A_SOURCE" und "_B_ETC" sollten sich auf einem Datenträger befinden.
+  Das Verzeichnis "_IMPROVED" kann sich auf demselben Datenträger befinden,
+  aber auch auf einm anderen.
+
+Anwendung der Verzeichnisse
+
+- "_A_SOURCE" --> Hier die Dateien ablegen, die improvt werden sollen.
+                  Nach einem erfolgreichen Script-Durchlauf müssen diese Dateien manuell
+                  verschoben oder gelöscht werden. (Das Scriptset nimmt sicherheitshalber
+                  nur Löschung von Dateien vor, die es selbst angelegt hat.)
+
+- "_B_ETC"    --> Hier die Dateien _config.txt und improved.txt ablegen. Beides optional.
+                  _config.txt: Parameterwerte für die improvefile-Aufrufe.
+                               optional heißt hier: wenn die Datei vorhanden ist, wird sie
+                               berücksichtigt, falls nicht, werden Standardwerte verwendet.
+                  _improved.txt: Infodatei, die in jeden improvten Albumordner kopiert wird.
+                                 optional heißt hier: wenn die Datei fehlt, wird nichts kopiert.
+
+- "_IMPROVED" --> In diesen Ordner werden die improvten Albumverzeichnisse abgelegt.
+
+
 - Ein oder zwei externe Datenträger sind mit dem Linux-Rechner physisch verbunden (z.B. über USB)
 - Auf diesem(n) Datenträger(n) befinden sich folgende Verzeichnisse:
       "_source" --> Quelle für die zu improvenden Dateien
@@ -27,18 +53,20 @@ Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 - Der Ordner "_etc" kann eine Datei "_improved.txt" enthalten. In dieser Datei lassen sich die Datum und
   Umstände der jweiligen improve-Sessions dokumentieren.
 
+Example: Ein Beispiel für die Ordnerstruktur findet sich im Verzeichnis "example_Ordnerstruktur".
+Dieser kleine Verzeichnisbaun kann bei Bedarf direkt auf den betreffenden Datenträger kopiert werden.
 
-    ANWENDUNG des nsc-Script Pakets
+Hinweis: Auf dem Zieldatenträger muss bei der Bearbeitung noch mindestens soviel freier Speicherplatz
+übrig bleiben, der dem Speicherbedarf der größten Musikdatei entspricht. 
+
+
+    ANWENDUNG des nsc-Script-Pakets
 
 Alle Aufrufe als root 
 
     "nsc.sh"
 
 Damit startet das Hauptscript "nsc_main.sh" im Hintergrund und die Bearbeitung läuft automatisch ab.
-
-Alternativ kann man dynamisch generierte mit ext formatierte Ramdisks verwenden. Der Aufruf lautet dann
-
-    "nsc.sh ext"
 
 Um einen Überblick über die Bearbeitung zu bekommen, kann man mit dem Aufruf
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRIPTTEXT="Script nsc.sh, Version vom 07.02.2024"
+SCRIPTTEXT="Script nsc.sh, Version vom 09.02.2024"
 SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad speichern zu können
 # basierend auf frankl-stereo utils (GNU Licence)
 # Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
@@ -12,15 +12,15 @@ SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad
 # Vorausetzungen:
 # - Ein oder zwei Datenträger sind mit dem Linux-Rechner physisch verbunden (z.B. über USB)
 # - Auf diesem(n) Datenträger(n) befinden sich folgende Verzeichnisse:
-#       "_source" --> Quelle für die zu improvenden Dateien
-#       "_etc"    --> Quelle für die Steuerdatei _nsc_config.txt sowie die für Infodatei _nsc_improved.txt
-#       "_improved" --> Ziel für die improvten Dateien
+#       "_A_SOURCE" --> Quelle für die zu improvenden Dateien
+#       "_B_ETC"    --> Quelle für die Steuerdatei _nsc_config.txt sowie die für Infodatei _nsc_improved.txt
+#       "_IMPROVED" --> Ziel für die improvten Dateien
 # - Dabei können "_source" und "_improved" auf unterschiedlichen Datenträgern liegen.
 #       "_etc" aber muss auf demselben Datenträger liegen wie "_source". )
 # - Das Script liest Vorgaben für die Parameter aus der Datei "_config.txt", falls eine solche
-#       Datei im Ordner "_etc" liegt. Anderenfalls verwendet das Script die default-Werte von frankl.
+#       Datei im Ordner "_B_ETC" liegt. Anderenfalls verwendet das Script die default-Werte von frankl.
 # - Das Script kopiert die Datei "_improved.txt" in die jeweiligen Musikordner im Zielverzeichnis,
-#       sofern eine solche Datei im Ordner "_etc" vorhanden ist.
+#       sofern eine solche Datei im Ordner "_B_ETC" vorhanden ist.
 #       In dieser Datei kann man (optional) die Bedingungen des Improvements individuell dokumentieren.
 # - Für die Standard-Ramdisk Methode benötigt das Script zwei Ramdisks.
 #       Dazu folgende Zeilen in die fstab eintragen und anschließend rebooten
@@ -28,12 +28,14 @@ SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad
 #       tmpfs    /mnt/nscram1    tmpfs    defaults,size=2048M    0    0
 #
 
-#23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-#        1         2         3         4         5         6         7         8         9
+###################################################################################################
+#                  Definition von Variablen für das Script
+###################################################################################################
 
 # Hilfsvariable für das Script
 START_TIME=$(date +%s)
 SLASH='/'
+STAR='*'
 TODAY=$(date +"%Y-%m-%d_%H-%M")
 LOGFILE=$TODAY"_log.txt"
 drive_count=1
@@ -41,47 +43,34 @@ mounted_directories=()
 TMP=tmp
 TMP0=tmp0
 TMP1=tmp1
-SIZE=2097152 # entspricht 2 GiB in kB
-
-# Hilfsvarialbe für die unterschiedlichen Ramdisk-Methoden
-#Standardwert
-RAM_METHOD="tmpfs"
-# Überprüfen, ob ein Parameter übergeben wurde
-if [ $# -eq 1 ]; then
-    # Wenn ein Parameter übergeben wurde, setze RAM_METHOD auf den übergebenen Wert
-    RAM_METHOD="$1"
-fi
-# Beispiel: Wenn RAM_METHOD "ext" ist, führe eine bestimmte Aktion aus
-if [ "$RAM_METHOD" = "ext" ]; then
-    echo "Spezielle Aktion für ext."
-fi
-
 
 # Default-Werte für die Script-Steuerung (kann über die nsc_config.txt Datei geändert werden)
 SETTINGS="nsc_settings.txt"
 AUTO_MOUNT=1
-SOURCE_DIR="_source"
-ETC_DIR="_etc"
-TARGET_DIR="_improved"
-TARGET_TMP_DIR="_tmp_improved"
-
+SOURCE_DIR="_A_SOURCE"
+ETC_DIR="_B_ETC"
+TARGET_DIR="_IMPROVED"
+TARGET_TMP_DIR="_NSC_TMP_IMPROVED"
+MOUNT_PATH_TARGET="/mnt/target"
 CONFIGFILE="_config.txt"
 INFOFILE="_improved.txt"
 
 # Hilfsvariable für die RAM Laufwerke
 WPATH=""
 WPATH_PRE=""
-# ramdisk für die neuere Methode. Voraussetzung in der /etc/fstab steht
-#     tmpfs    /mnt/nscram    tmpfs    defaults,size=4096M    0    0
-RAMDISK="/mnt/nscram"
+# Ramdisks für statische tmpfs Ramdisk Methode
+RAMDISK0="/mnt/nscram0/"
+RAMDISK1="/mnt/nscram1/"
 # Variablen für die Horst-Methode
 DEV_RAM_PATH="/dev/ram"
 MNT_RAM_PATH="/mnt/ram"
 
 # Default-Werte für das Verfahren
+RAM_METHOD="tmpfs"
 NMAX_RAM=9
 NMAX_PHYS=3
 NMAX=$((NMAX_RAM + NMAX_PHYS))
+RAM_SIZE=2G
 FAST_BUFFER_SIZE=536870912
 FAST_LOOPS_PER_SECOND=2000
 FAST_BYTES_PER_SECOND=8192000
@@ -105,6 +94,11 @@ NEWLY_IMPROVED_FILES_SIZE=0
 MAX_M_ATTEMPTS=10
 M_ATTEMPT=0
 
+
+###################################################################################################
+#                   Definition von Funktionen für das Script
+###################################################################################################
+
 # Improvefile-Aufruf --> später verwenden
 schaffwas_fast(){
     echo "schaffwas_fast Aufruf"
@@ -116,37 +110,6 @@ schaffwas_slow(){
     echo "schaffwas_slow Aufruf"
 #    cp -v "$1" "$2"
     taskset -c 1 nsc_improvefile.sh "$1" "$2" $SLOW_BUFFER_SIZE $SLOW_LOOPS_PER_SECOND $SLOW_BYTES_PER_SECOND $SLOW_DSYNCS_PER_SECOND $SLOW_NR_REFRESHS
-}
-
-# Definition von Funktionen für das Script
-# Aufräumarbeiten zum Script-Ende
-nsc_cleanup()
-{
-    echo -n "Uhrzeit: "
-    CURRENT_TIME=$(date +"%H:%M")
-    echo $CURRENT_TIME
-    END_TIME=$(date +%s)
-    RUNTIME=$(($END_TIME - $START_TIME))
-    HOURS=$(($RUNTIME / 3600))
-    MINUTES=$(( ($RUNTIME % 3600) /60 ))
-    SECONDS=$(( $RUNTIME % 60 ))
-    echo "Laufzeit des Scripts: $HOURS Stunde(n), $MINUTES Minute(n) und $SECONDS Sekunden"
-    echo "############################################################################################"
-    echo "#                                 nsc_main.sh SCRIPT ENDE                                  #"
-    echo "############################################################################################"
-
-    # Kopiere nohup.out in den Logfile
-    cp -v nohup.out $ETC_PATH$LOGFILE
-
-    if [ $AUTO_MOUNT -eq 1 ]; then
-        # Unmounte alle im Skript gemounteten Verzeichnisse
-        for dir in "${mounted_directories[@]}"; do
-            umount "$dir"
-            echo "Unmounting: $dir"
-        done
-    else
-        echo "Da Auto-Mount ausgeschaltet ist, wird kein umount externer Datenträger vorgenommen."
-    fi
 }
 
 # Config-Infos ausgeben
@@ -222,7 +185,7 @@ print_status()
     echo ""
     /boot/dietpi/dietpi-cpuinfo
     echo ""
-    echo "Aktueller Stand der Bearbeitung (ca.-Angaben):"
+    echo "Aktueller Stand der Bearbeitung (ca.-Angaben): "
     IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
     NEWLY_IMPROVED_FILES_SIZE=$((IMPROVED_FILES_SIZE - FORMER_IMPROVED_FILES_SIZE))
     PROGRESS=$((NEWLY_IMPROVED_FILES_SIZE *100 / TO_BE_IMPROVED_FILES_SIZE))
@@ -231,13 +194,15 @@ print_status()
 
 print_kurzstatus()
 {
-    echo "Kurze Status-Info"
+    echo -n "Kurze Status-Info: "
+    CURRENT_TIME=$(date +"%H:%M")
+    echo $CURRENT_TIME
     echo -n "Album-Verzeichnis: "
     echo "$DIRNAME"
     echo -n "Musikdatei: "
     echo "$FILENAME"
 
-    echo -n "Aktueller Stand der Bearbeitung (ca.-Angaben):"
+    echo -n "Aktueller Stand der Bearbeitung (ca.-Angaben): "
     IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
     NEWLY_IMPROVED_FILES_SIZE=$((IMPROVED_FILES_SIZE - FORMER_IMPROVED_FILES_SIZE))
     PROGRESS=$((NEWLY_IMPROVED_FILES_SIZE *100 / TO_BE_IMPROVED_FILES_SIZE))
@@ -258,22 +223,27 @@ check_bit_identity(){
     fi
 }
 
-# Sicherstelle, dass der im Argument übergebene Mount-Point undgemoutet udn wieder gemountet wird
+# Sicherstellen, dass der Mount-Point $MOUNT_PATH_TARGET ungemoutet udn wieder gemountet wird
 ensure_umount_and_mount(){
-    MPATH_TARGET="$1"
+    echo ""
+    echo "Automatisches Unmounten und Mounten des Zieldatenträgers, um Schreiben auf den Datenträger zu erzwingen."
+    echo "Einzelne mount oder umount Fehlermeldungen im folgenden sind unkritisch."
     M_ATTEMPT=0
 
     while true; do
-        echo "Schleifendurchlauf Nr. $M_ATTEMPT"
+        echo "Mount / Umount Schleifendurchlauf Nr. $M_ATTEMPT"
 
-        mount $MPATH_TARGET
+        mount -o remount $MOUNT_PATH_TARGET
         if [ $? -eq 0 ]; then
             echo "mount erfolgreich durchgeführt"
             break;
         else
-            umount $MPATH_TARGET
+            umount $MOUNT_PATH_TARGET
             if [ $? -eq 0 ]; then
                 echo "umount erfolgreich durchgeführt, nach Kurzschlaf weiter in der while Schleife"
+                sleep $FSLEEP
+            else
+                echo "umount nicht erfolgreich, nach Kurzschlaf neuer Versuch."
                 sleep $FSLEEP
             fi
         fi
@@ -288,20 +258,20 @@ ensure_umount_and_mount(){
 }
 
 # Funktionen zur Ramdisk-Behandlung
-# Neue alternative Methode zur Behandlung des ram.
+# Neue alternative Methode zur Behandlung des ram
 create_ram(){
     N_LOC="$1"
     if [ "$RAM_METHOD" = "tmpfs" ]; then
         echo "create_ram mit Parameter $1 nach tmpfs Methode aufgerufen."
         WPATH_PRE="$WPATH"
         if [ "$((N_LOC % 2))" -eq 0 ]; then
-            WPATH="/mnt/nscram0/"
+            WPATH="$RAMDISK0"
         else
-            WPATH="/mnt/nscram1/"
+            WPATH="$RAMDISK1"
         fi
     else
         echo "create_ram mit Parameter $1 nach tmpfs Methode aufgerufen."
-        mke2fs -t ext2 -O extents -vm0 "$DEV_RAM_PATH$N_LOC" 2G -b 1024
+        mke2fs -t ext2 -O extents -vm0 "$DEV_RAM_PATH$N_LOC" $RAM_SIZE -b 1024
         sleep $UFSLEEP
         mkdir -v "$MNT_RAM_PATH$N_LOC"
         mount -v "$DEV_RAM_PATH$N_LOC" "$MNT_RAM_PATH$N_LOC"
@@ -332,28 +302,48 @@ destroy_ram(){
     fi
 }
 
-# Methode von Horst
-# Erzeuge eine Ramdisk mit 2G Größe, Übergabeparameter: Nummer der RAM Disk beginnend mit 0
-#create_ram(){
-#    N_LOC="$1"
-#    mke2fs -t ext2 -O extents -vm0 "$DEV_RAM_PATH$N_LOC" 2G -b 1024
-#    sleep $UFSLEEP
-#    mkdir -v "$MNT_RAM_PATH$N_LOC"
-#    mount -v "$DEV_RAM_PATH$N_LOC" "$MNT_RAM_PATH$N_LOC"
-#    sleep $UFSLEEP
-#    chmod --verbose a+rwx "$MNT_RAM_PATH$N_LOC"
-#    WPATH_PRE="$WPATH"
-#    WPATH="$MNT_RAM_PATH$N_LOC$SLASH"
-#}
+# Aufräumarbeiten zum Script-Ende
+nsc_cleanup()
+{
+# Umgang mit Ordner $TARGET_TMP_PATH
+# Überprüfe, ob das Verzeichnis existiert
+    if [ -d "$TARGET_TMP_PATH" ]; then
+        # Das Verzeichnis existiert, lösche es mit seinem Inhalt
+        rm -r "$TARGET_TMP_PATH"
+        echo "Das Verzeichnis $TARGET_TMP_PATH und sein Inhalt wurden gelöscht."
+    fi
 
-# Lösche die Ramdisk mit der entsprechenden Nummer
-#destroy_ram(){
-#    N_LOC="$1"
-#    umount -v "$DEV_RAM_PATH$N_LOC"
-#    sleep $UFSLEEP
-#    rmdir -v "$MNT_RAM_PATH$N_LOC"
-#    rm -v "$DEV_RAM_PATH$N_LOC"
-#}
+    echo -n "Uhrzeit: "
+    CURRENT_TIME=$(date +"%H:%M")
+    echo $CURRENT_TIME
+    END_TIME=$(date +%s)
+    RUNTIME=$(($END_TIME - $START_TIME))
+    HOURS=$(($RUNTIME / 3600))
+    MINUTES=$(( ($RUNTIME % 3600) /60 ))
+    SECONDS=$(( $RUNTIME % 60 ))
+    echo "Laufzeit des Scripts: $HOURS Stunde(n), $MINUTES Minute(n) und $SECONDS Sekunden"
+    echo "############################################################################################"
+    echo "#                                 nsc_main.sh SCRIPT ENDE                                  #"
+    echo "############################################################################################"
+
+    # Kopiere nohup.out in den Logfile
+    cp -v nohup.out $ETC_PATH$LOGFILE
+
+    if [ $AUTO_MOUNT -eq 1 ]; then
+        # Unmounte alle im Skript gemounteten Verzeichnisse
+        for dir in "${mounted_directories[@]}"; do
+            umount "$dir"
+            echo "Unmounting: $dir"
+        done
+    else
+        echo "Da Auto-Mount ausgeschaltet ist, wird kein umount externer Datenträger vorgenommen."
+    fi
+}
+
+
+###################################################################################################
+#                   START DER EIGENTLICHEN ABARBEITUNG - VORBEREITUNGEN
+###################################################################################################
 
 # Start der Scriptausgabe
 echo "############################################################################################"
@@ -393,6 +383,7 @@ fi
 # Durchlaufe alle nicht gemounteten Laufwerke
 echo ""
 echo "Mounten von Datenträgern und Auslesen wichtiger Pfade"
+echo "Einzelne mount und umount Fehlermeldungen im folgenden sind unkritisch."
 echo ""
 
 if [ $AUTO_MOUNT -eq 1 ]; then
@@ -402,7 +393,7 @@ if [ $AUTO_MOUNT -eq 1 ]; then
         mkdir -p "$mount_point"
 
         # Mounte das Laufwerk
-        mount -v "/dev/$drive" "$mount_point"
+        mount -v -o rw,noatime "/dev/$drive" "$mount_point"
 
         # Füge das gemountete Verzeichnis zur Liste hinzu
         mounted_directories+=("$mount_point")
@@ -423,7 +414,6 @@ if [ $AUTO_MOUNT -eq 1 ]; then
         if [ -d "$target_path" ]; then
             TARGET_PATH="$target_path$SLASH"
             TARGET_TMP_PATH="$target_tmp_path$SLASH"
-            MPATH="$mount_point"
             echo "TARGET_PATH set to $TARGET_PATH"
         fi
 
@@ -438,6 +428,12 @@ if [ $AUTO_MOUNT -eq 1 ]; then
         ((drive_count++))
     done
 fi
+
+# Extraktion der Mountpath-Variable aus TARGET_PATH
+# Extrahiere den Mount-Point
+MOUNT_PATH_TARGET=$(df -P "$TARGET_PATH" | awk 'NR==2 {print $6}')
+echo "Der Mount-Point von $TARGET_PATH ist: $MOUNT_PATH_TARGET"
+
 
 # Auslesen der Variablen aus der Datei "_config", sofern diese vorhanden ist
 # sowie ggf. Überschreiben der default-Werte
@@ -480,11 +476,61 @@ TO_BE_IMPROVED_FILES_SIZE=$(du -s "$SOURCE_PATH" | awk '{print $1}')
 # Starte das Script und zeige die Config-Info
 print_basic_info
 
+# Umgang mit Ordner $TARGET_TMP_PATH
+# Überprüfe, ob das Verzeichnis existiert
+if [ -d "$TARGET_TMP_PATH" ]; then
+    # Das Verzeichnis existiert, lösche seinen Inhalt
+    # Prüfe, ob Dateien im Verzeichnis vorhanden sind
+    if [ "$(ls -A "$TARGET_TMP_PATH")" ]; then
+        rm -v "$TARGET_TMP_PATH"*
+        echo "Dateien im Verzeichnis $TARGET_TMP_PATH wurden alte tmp-Dateien gelöscht."
+    else
+        echo "Das Verzeichnis $TARGET_TMP_PATH ist erwartungsgemäß leer."
+    fi
+else
+    # Das Verzeichnis existiert nicht, lege es an
+    mkdir -p "$TARGET_TMP_PATH"
+    echo "Das Verzeichnis $TARGET_TMP_PATH wurde erstellt."
+fi
+
+# Umgang mit möglichen Überbleibseln aus den Ramdisks bei statischer tpmfs Methode
+# Überprüfe, ob das Verzeichnis $RAMDISK0 existiert
+if [ -d "$RAMDISK0" ]; then
+    # Prüfe, ob Dateien im Verzeichnis vorhanden sind
+    if [ "$(ls -A "$RAMDISK0")" ]; then
+        rm -v "$RAMDISK0"*
+        echo "Dateien im Verzeichnis $RAMDISK0 wurden gelöscht."
+    else
+        echo "Das Verzeichnis $RAMDISK0 ist erwartungsgemäß leer."
+    fi
+else
+    echo "Das Verzeichnis $RAMDISK0 existiert nicht. Unproblematisch nur bei der dynamischen Ramdisk Methode."
+fi
+
+# Überprüfe, ob das Verzeichnis $RAMDISK1 existiert
+if [ -d "$RAMDISK1" ]; then
+    # Prüfe, ob Dateien im Verzeichnis vorhanden sind
+    if [ "$(ls -A "$RAMDISK1")" ]; then
+        rm -v "$RAMDISK1"*
+        echo "Dateien im Verzeichnis $RAMDISK1 wurden gelöscht."
+    else
+        echo "Das Verzeichnis $RAMDISK1 ist erwartungsgemäß leer."
+    fi
+else
+    echo "Das Verzeichnis $RAMDISK1 existiert nicht. Unproblematisch nur bei der dynamischen Ramdisk Methode."
+fi
+
+
 # Pausieren
 echo -n "Das Script pausiert jetzt "
 echo -n $LSLEEP
 echo -e " Sekunde(n). \n"
 sleep $LSLEEP
+
+###################################################################################################
+#       START DER EIGENTLICHEN ABARBEITUNG - DURCHGANG DURCH DIE ALBUM-VERZEICHNISSE
+###################################################################################################
+
 
 # Hier beginnt die eigentliche Arbeit dieses Scripts
 # Verzeichnisschleife - läuft durch jedes Verzeichnis (= Album-Ordner) im Quellverzeichnispfad
@@ -626,7 +672,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     # Aufräumen
                     shred "$WPATH_PRE$TMP$NPRE"
                     rm -v "$WPATH_PRE$TMP$NPRE"
-                    ensure_umount_and_mount "$MPATH"
+                    ensure_umount_and_mount
 
                 # N = NMAX von phys-tmp nach _improved
                 else
@@ -654,7 +700,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     # Aufräumen
                     shred "$WPATH$TMP$NPRE"
                     rm -v "$WPATH$TMP$NPRE"
-                    ensure_umount_and_mount "$MPATH"
+                    ensure_umount_and_mount
 
                     echo "improvefile-Anwendung für diese Musikdatei  abgeschlossen"
                 fi
