@@ -25,6 +25,15 @@ INFOFILE="_improved.txt"
 # Soll automatisch gemountet werden? 1 für "ja", 0 für "nein", default =1
 AUTO_MOUNT=1
 #
+# Optional: mount options - wird nur berücksichtigt, wenn AUTO_MOUNT=0.
+#    REMOUNT_OPTION="-o remount" muss dann gesetzt werden, wenn das initiale Mounten der Zielpartition mit einer Option
+#    ausgeführt wurde, z.B. mit "mount -o rw <Device-Pfad> <Mount-Pfad>"
+#
+#    Wird das initiale Mounten der Zielpartition nicht mit Option also nicht mit "-o ..." ausgeführt, dann darf auch beim Remounten
+#    keine Option verwendet werden. Dies ist beispielsweise beim dietpi-drive_manager der Fall. Dann die folgende Zeile auskommentieren.
+# REMOUNT_OPTION="-o remount"
+# REMOUNT_OPTION="-o rw /dev/sda1"
+
 # Quellpfad für die zu improvenden Dateien
 SOURCE_PATH="/mnt/target/_A_SOURCE/"
 # Pfad für Hilsfdateien wie _config.txt
@@ -33,4 +42,3 @@ ETC_PATH="/mnt/target/_B_ETC/"
 TARGET_PATH="/mnt/target/_IMPROVED/"
 # Pfad für temporär improvte Dateien
 TARGET_TMP_PATH="/mnt/target/_NSC_TMP_IMPROVED/"
-

@@ -64,6 +64,7 @@ RAMDISK1="/mnt/nscram1/"
 # Variablen für die Horst-Methode
 DEV_RAM_PATH="/dev/ram"
 MNT_RAM_PATH="/mnt/ram"
+REMOUNT_OPTION=""
 
 # Default-Werte für das Verfahren
 RAM_METHOD="tmpfs"
@@ -228,17 +229,32 @@ ensure_umount_and_mount(){
     echo ""
     echo "Automatisches Unmounten und Mounten des Zieldatenträgers, um Schreiben auf den Datenträger zu erzwingen."
     echo "Einzelne mount oder umount Fehlermeldungen im folgenden sind unkritisch."
-    M_ATTEMPT=0
+    echo "REMOUNT_OTION is set to $REMOUNT_OPTION"
 
+    # Erster umount und anschließender mount-Versuch
+    umount -v $MOUNT_PATH_TARGET
+    local umount_exit_code=$?
+    sleep $FSLEEP
+    if [ $umount_exit_code -eq 0 ]; then
+        echo "umount erfolgreich durchgeführt. Weiter mit mount-Versuch."
+        mount -v $REMOUNT_OPTION $MOUNT_PATH_TARGET
+        if [ $? -eq 0 ]; then
+            echo "mount erfolgreich durchgeführt."
+            return 0
+        fi
+    fi
+
+    # while-Schleife mit mehreren Versuchen, falls umount und mount problemaisch
+    M_ATTEMPT=1
     while true; do
         echo "Mount / Umount Schleifendurchlauf Nr. $M_ATTEMPT"
 
-        mount -o remount $MOUNT_PATH_TARGET
+        mount -v $REMOUNT_OPTION $MOUNT_PATH_TARGET
         if [ $? -eq 0 ]; then
             echo "mount erfolgreich durchgeführt"
             break;
         else
-            umount $MOUNT_PATH_TARGET
+            umount -v $MOUNT_PATH_TARGET
             if [ $? -eq 0 ]; then
                 echo "umount erfolgreich durchgeführt, nach Kurzschlaf weiter in der while Schleife"
                 sleep $FSLEEP
@@ -393,7 +409,7 @@ if [ $AUTO_MOUNT -eq 1 ]; then
         mkdir -p "$mount_point"
 
         # Mounte das Laufwerk
-        mount -v -o rw,noatime "/dev/$drive" "$mount_point"
+        mount -v -o rw "/dev/$drive" "$mount_point"
 
         # Füge das gemountete Verzeichnis zur Liste hinzu
         mounted_directories+=("$mount_point")
@@ -414,6 +430,7 @@ if [ $AUTO_MOUNT -eq 1 ]; then
         if [ -d "$target_path" ]; then
             TARGET_PATH="$target_path$SLASH"
             TARGET_TMP_PATH="$target_tmp_path$SLASH"
+            DEV_PATH_TARGET="/dev/$drive"
             echo "TARGET_PATH set to $TARGET_PATH"
         fi
 
@@ -467,7 +484,10 @@ fi
 FORMER_IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
 TO_BE_IMPROVED_FILES_SIZE=$(du -s "$SOURCE_PATH" | awk '{print $1}')
 NMAX=$((NMAX_RAM + NMAX_PHYS))
-
+# Umgang mit den mount options
+if [ $AUTO_MOUNT -eq 1 ]; then
+     REMOUNT_OPTION="-o rw $DEV_PATH_TARGET"
+fi
 
 # Vorbereitung für das Ausgeben des laufenden Bearbeitungsstandes:
 IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
