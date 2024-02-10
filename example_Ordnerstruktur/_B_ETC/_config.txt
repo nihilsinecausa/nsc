@@ -12,8 +12,9 @@ NMAX_PHYS=3
 # RAM_METHOD=tmpfs (default) Standard tmpfs Ramdisk Methode
 # RAM_METHOD=ext dynamische ext Ramdisk Methode 
 RAM_METHOD=tmpfs
-# Größe des RAM (wird nur bei der dynamischen Methode berücksichtigt), default 2G
-RAM_SIZE=2G
+# Größe des RAM (wird nur bei der dynamischen Methode berücksichtigt), default 1G
+# Voaussetzung: Einzelne Musikdateien sind immer etwas kleiner als 1 GB
+RAM_SIZE=1G
 
 # Variablen für das bufhrt Verfahren. 
 # Folgender Satz von Variablen mit der Vorsilbe "FAST" wird für die schnellen Durchläufe NMAX-1 verwendet, 
