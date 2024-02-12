@@ -2,6 +2,10 @@ Dieses nsc Script-Paket dient zur Unterstützung von improvefile auf einem Linux
 Es basiert auf frankl's stereo utilities. Es gilt die GNU License (cf License.txt)
 Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
+12.02.2024
+Hauptscript wird Core 2 in Arch Linux ausgeführt. Sollte die Datei "improved.txt" in einem der zu improvenden Musikalben vorhanden sein,
+so wird diese nicht mehr "improvt".
+
 10.02.2024 
 umount und mount Aufrufe geändert. Zusätzliche REMOUNT_OPITION in nsc_settings.txt eingebaut.
 

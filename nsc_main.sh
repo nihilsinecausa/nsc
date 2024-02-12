@@ -572,6 +572,11 @@ for DIR in "$SOURCE_PATH"/*; do
 
         # Schleife durch die alle Files im laufenden Verzeichnis
         for FILE in "$SOURCE_PATH$DIRNAME"/*; do
+            # Den Fall abfangen, dass die zu improvende Datei "_improved.txt" heißt
+            if [ "$filename" = "_improved.txt" ]; then
+                continue
+            fi
+
             # Status ausgeben
             print_status
             # set each file name to the 'FILENAME' variable
@@ -699,7 +704,7 @@ for DIR in "$SOURCE_PATH"/*; do
 
                     echo ""
                     echo ""
-                    echo "Letzter Durchlauf von improvefile für diese Musikdatei (Nr. $N, langsames Verfahren, von phys-tmp nach _improved)"
+                    echo "Letzter Durchlauf von improvefile für diese Musikdatei (Nr. $N, langsames Verfahren, von phys-tmp nach _IMPROVED)"
                     echo ""
                     print_kurzstatus
 

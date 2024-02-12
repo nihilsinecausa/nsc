@@ -14,6 +14,10 @@ WPATH="/root/nsc/"
 SCRIPTFILE="./nsc_main.sh"
 RAM_METHOD="tmpfs"
 
+# Prüfen, ob mehrer CPU Core 2 zur Verfügung steht:
+CORE_COUNT=$(lscpu | grep 'Kern(e) pro Sockel' | awk '{print $NF}')
+
+
 # Zum Arbeitsverzeichnis wechseln
 cd "$WPATH"
 
@@ -25,4 +29,9 @@ echo "Alle  Terminal-Ausgaben werden unterdrückt."
 echo "Statusabfragen sind möglich durch Aufruf des Scripts \"info.sh\"."
 
 # Aufrufen des Haupt-Scripts mit nohup im Hintergrund
-nohup "$SCRIPTFILE" &
+if [ "$CORE_COUNT" -ge 2 ]; then
+    echo "Zuordnung des Hauptscripts auf Kern Nr. 2"
+    taskset -c 2 nohup "$SCRIPTFILE" &
+else
+    nohup "$SCRIPTFILE" &
+fi
