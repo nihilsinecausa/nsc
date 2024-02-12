@@ -572,15 +572,17 @@ for DIR in "$SOURCE_PATH"/*; do
 
         # Schleife durch die alle Files im laufenden Verzeichnis
         for FILE in "$SOURCE_PATH$DIRNAME"/*; do
+
+            # set each file name to the 'FILENAME' variable
+            FILENAME=$(basename "$FILE")
             # Den Fall abfangen, dass die zu improvende Datei "_improved.txt" heißt
-            if [ "$filename" = "_improved.txt" ]; then
+            if [ "$FILENAME" = "_improved.txt" ]; then
+                echo "Es wurde _improved.txt in den Quelldateien gefunden. Dieser Fall wird ignoriert."
                 continue
             fi
 
             # Status ausgeben
             print_status
-            # set each file name to the 'FILENAME' variable
-            FILENAME=$(basename "$FILE")
             echo""
             echo "Status: Bearbeitung des Album-Verzeichnisses: "
             echo "$DIRNAME"
