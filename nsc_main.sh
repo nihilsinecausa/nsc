@@ -65,6 +65,8 @@ RAMDISK1="/mnt/nscram1/"
 DEV_RAM_PATH="/dev/ram"
 MNT_RAM_PATH="/mnt/ram"
 REMOUNT_OPTION=""
+# File-System Methode für den ramroot-Modus
+FILESYSTEM_PATH="/root/nsc/tmp/"
 
 # Default-Werte für das Verfahren
 RAM_METHOD="tmpfs"
@@ -285,8 +287,8 @@ create_ram(){
         else
             WPATH="$RAMDISK1"
         fi
-    else
-        echo "create_ram mit Parameter $1 nach tmpfs Methode aufgerufen."
+    elif [ "$RAM_METHOD" = "ext" ]; then
+        echo "create_ram mit Parameter $1 nach ext Methode aufgerufen."
         mke2fs -t ext2 -O extents -vm0 "$DEV_RAM_PATH$N_LOC" $RAM_SIZE -b 1024
         sleep $UFSLEEP
         mkdir -v "$MNT_RAM_PATH$N_LOC"
@@ -295,6 +297,11 @@ create_ram(){
         chmod --verbose a+rwx "$MNT_RAM_PATH$N_LOC"
         WPATH_PRE="$WPATH"
         WPATH="$MNT_RAM_PATH$N_LOC$SLASH"
+    else
+        echo "create ram mit Parameter $1 nach Filesystem-Methode aufgerufen."
+        mkdir -v "$FILESYSTEM_PATH$N_LOC"
+        WPATH_PRE="$WPATH"
+        WPATH="$FILESYSTEM_PATH$N_LOC$SLASH"
     fi
 }
 
@@ -309,14 +316,18 @@ destroy_ram(){
             umount -v /mnt/nscram1/
             sleep $UFSLEEP
         fi
-    else
+    elif [ "$RAM_METHOD" = "ext" ]; then
         echo "destroy_ram mit Parameter $1 nach ext Methode aufgerufen."
         umount -v "$DEV_RAM_PATH$N_LOC"
         sleep $UFSLEEP
         rmdir -v "$MNT_RAM_PATH$N_LOC"
         rm -v "$DEV_RAM_PATH$N_LOC"
+    else
+        echo "destroy_ram mit Parameter $1 nach Filesystem-Methode aufgerufen."
+        rmdir -v "$FILESYSTEM_PATH$N_LOC"
     fi
 }
+
 
 # Aufräumarbeiten zum Script-Ende
 nsc_cleanup()
@@ -524,7 +535,7 @@ if [ -d "$RAMDISK0" ]; then
         echo "Das Verzeichnis $RAMDISK0 ist erwartungsgemäß leer."
     fi
 else
-    echo "Das Verzeichnis $RAMDISK0 existiert nicht. Unproblematisch nur bei der dynamischen Ramdisk Methode."
+    echo "Das Verzeichnis $RAMDISK0 existiert nicht. Unproblematisch bei den Methoden ext und filesystem."
 fi
 
 # Überprüfe, ob das Verzeichnis $RAMDISK1 existiert
@@ -537,8 +548,22 @@ if [ -d "$RAMDISK1" ]; then
         echo "Das Verzeichnis $RAMDISK1 ist erwartungsgemäß leer."
     fi
 else
-    echo "Das Verzeichnis $RAMDISK1 existiert nicht. Unproblematisch nur bei der dynamischen Ramdisk Methode."
+    echo "Das Verzeichnis $RAMDISK1 existiert nicht. Unproblematisch nur bei den Methoden ext und filesystem."
 fi
+
+# Überprüfe, ob das Verzeichnis $FILESYSTEM_PATH existiert
+if [ -d "$FILESYSTEM_PATH" ]; then
+    # Prüfe, ob Dateien im Verzeichnis vorhanden sind
+    if [ "$(ls -A "$FILESYSTEM_PATH")" ]; then
+        rm -rv "$FILESYSTEM_PATH"*
+        echo "Dateien im Verzeichnis $FILESYSTEM_PATH wurden gelöscht."
+    else
+        echo "Das Verzeichnis $FILESYSTEM_PATH ist erwartungsgemäß leer."
+    fi
+else
+    echo "Das Verzeichnis $FILESYSTEM_PATH existiert nicht. Unproblematisch bei den Methoden tmpfs und ext."
+fi
+
 
 
 # Pausieren

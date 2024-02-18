@@ -39,6 +39,9 @@ Ein Beispiel für eine solche fstab-Datei kann man sich wie folgt ansehen:
 
 cat /root/nsc/utils/fstab_example
 
+Für den RamRoot-Modus von Linux Arch ist diese fstab Anpassung nicht erforderlich.
+Hier wird empfohlen in dern _config.txt die "filesystem" Methode auszuwählen.
+
 
     ÜBERPRÜFUNG AUF UPDATES
 
