@@ -67,6 +67,7 @@ MNT_RAM_PATH="/mnt/ram"
 REMOUNT_OPTION=""
 # File-System Methode für den ramroot-Modus
 FILESYSTEM_PATH="/root/nsc/tmp/"
+DEFRAG=1
 
 # Default-Werte für das Verfahren
 RAM_METHOD="tmpfs"
@@ -212,6 +213,24 @@ print_kurzstatus()
     echo "$PROGRESS % von 100 %"
     echo ""
 }
+
+# Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
+analyse_frag_and_defrag(){
+    echo "Analyse, ob Datei $1 fragmentiert ist"
+    filefrag -v "$1"
+    # Prüfen, ob die Variable DEFRAG gesetzt ist
+    if [ -n "$DEFRAG" ] && [ "$DEFRAG" -eq 1 ]; then
+        # Funktion Defragmentierungsprozedur
+        echo "DEFRAG ist auf 1 gesetzt. Die Datei Quelldatei $1 wird defragmentiert"
+        e4defrag "$1"
+        echo "Wiederholung der Analyse, ob Datei $1 fragmentiert ist"
+        filefrag -v "$1"
+    else
+        # Variable DEFRAG existiert nicht oder ist nicht auf 1 gesetzt
+        echo "DEFRAG ist nicht auf 1 gesetzt oder existiert nicht. Die Quelldatei $1 wird nicht defragmentiert"
+    fi
+}
+
 
 # Fundamentale Funktion zur Überprüfung der Bit-Identität
 check_bit_identity(){
@@ -630,6 +649,9 @@ for DIR in "$SOURCE_PATH"/*; do
                     # Ramdisk bereitstellen
                     create_ram $N
 
+                    # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
+                    analyse_frag_and_defrag "$SOURCE_PATH$DIRNAME$SLASH$FILENAME"
+
                     # improvefile-Aufruf für die laufende Datei zum ersten Mal
                     schaffwas_fast "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
                     check_bit_identity "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
@@ -653,6 +675,8 @@ for DIR in "$SOURCE_PATH"/*; do
                     NPRE=$(($N - 1))
                     create_ram $N
 
+                    # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
+                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
                     # improvefile-Aufruf
                     schaffwas_fast "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
                     check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
@@ -681,6 +705,9 @@ for DIR in "$SOURCE_PATH"/*; do
                     NPRE=$(($N - 1))
                     WPATH_PRE="$WPATH"
                     WPATH="$TARGET_TMP_PATH"
+
+                    # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
+                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
 
                     # improvefile-Aufruf
                     schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
@@ -711,6 +738,9 @@ for DIR in "$SOURCE_PATH"/*; do
                     WPATH_PRE="$WPATH"
                     WPATH="$TARGET_TMP_PATH"
 
+                    # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
+                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
+
                     # improvefile-Aufruf
                     schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
                     check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
@@ -738,6 +768,9 @@ for DIR in "$SOURCE_PATH"/*; do
                     # Zähler und WPATH bereitstellen
                     NPRE=$(($N - 1))
                     WPATH_PRE="$WPATH"
+
+                    # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
+                    analyse_frag_and_defrag "$WPATH$TMP$NPRE"
 
                     echo "$WPATH$TMP$NPRE"
                     schaffwas_slow "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"

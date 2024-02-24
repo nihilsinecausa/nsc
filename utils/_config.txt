@@ -18,6 +18,10 @@ RAM_METHOD=filesystem
 # Größe des RAM (wird nur bei der dynamischen Methode berücksichtigt), default 2G
 RAM_SIZE=2G
 
+# Soll das Script vor jedem Improven eine Defragmentierung der resultierenden Datei vornehmen?
+# Default: DEFRAG=1, anderenfalls DEFRAG=0 oder Weglassen der Variable
+DEFRAG=1
+
 # Variablen für das bufhrt Verfahren. 
 # Folgender Satz von Variablen mit der Vorsilbe "FAST" wird für die schnellen Durchläufe NMAX-1 verwendet, 
 # bei welchen auf die temporäre Ramdisk geschrieben wird
