@@ -676,7 +676,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     create_ram $N
 
                     # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
-                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
+#                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
                     # improvefile-Aufruf
                     schaffwas_fast "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
                     check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
@@ -707,7 +707,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     WPATH="$TARGET_TMP_PATH"
 
                     # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
-                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
+#                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
 
                     # improvefile-Aufruf
                     schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
@@ -739,7 +739,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     WPATH="$TARGET_TMP_PATH"
 
                     # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
-                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
+#                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
 
                     # improvefile-Aufruf
                     schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
@@ -770,7 +770,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     WPATH_PRE="$WPATH"
 
                     # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
-                    analyse_frag_and_defrag "$WPATH$TMP$NPRE"
+#                    analyse_frag_and_defrag "$WPATH$TMP$NPRE"
 
                     echo "$WPATH$TMP$NPRE"
                     schaffwas_slow "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
