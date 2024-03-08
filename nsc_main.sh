@@ -625,9 +625,9 @@ for DIR in "$SOURCE_PATH"/*; do
             if [ "$FILENAME" = "_improved.txt" ]; then
                 echo "Es wurde _improved.txt in den Quelldateien gefunden. Dieser Fall wird ignoriert."
                 continue
-            # Den Fall abfangen, dass es sich um eine Grafikdatei handelt
-            elif [ "$POSTFIX" == "jpg" ] || [ "$POSTFIX" == "png" ] || [ "$POSTFIX" == "bmp" ]; then
-                echo "Die Datei $FILENAME ist eine Grafikdatei, sie wird normal kopiert."
+            # Den Fall abfangen, dass es sich um eine Grafik- oder pdf-datei handelt
+            elif [ "$POSTFIX" == "jpg" ] || [ "$POSTFIX" == "png" ] || [ "$POSTFIX" == "bmp" ] || [ "$POSTFIX" == "pdf" ]; then
+                echo "Die Datei $FILENAME ist eine Grafik- oder pdf-datei, sie wird normal kopiert."
                 cp -v "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$TARGET_PATH$DIRNAME"
                 continue
             else
