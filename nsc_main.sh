@@ -619,10 +619,18 @@ for DIR in "$SOURCE_PATH"/*; do
 
             # set each file name to the 'FILENAME' variable
             FILENAME=$(basename "$FILE")
+            # Analysiere die Dateiendung
+            POSTFIX=$(echo "$FILENAME" | awk -F'.' '{print tolower($NF)}')
             # Den Fall abfangen, dass die zu improvende Datei "_improved.txt" heißt
             if [ "$FILENAME" = "_improved.txt" ]; then
                 echo "Es wurde _improved.txt in den Quelldateien gefunden. Dieser Fall wird ignoriert."
                 continue
+            # Den Fall abfangen, dass es sich um eine Grafikdatei handelt
+            elif [ "$POSTFIX" == "jpg" ] || [ "$POSTFIX" == "png" ] || [ "$POSTFIX" == "bmp" ]; then
+                echo "Die Datei $FILENAME ist eine Grafikdatei. Dieser Fall wird ignoriert."
+                continue
+            else
+                echo "Die Datei $FILENAME ist weder _improved.txt noch eine Grafikdatei"
             fi
 
             # Status ausgeben

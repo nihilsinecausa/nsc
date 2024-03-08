@@ -2,6 +2,9 @@ Dieses nsc Script-Paket dient zur Unterstützung von improvefile auf einem Linux
 Es basiert auf frankl's stereo utilities. Es gilt die GNU License (cf License.txt)
 Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
+08.03.2024
+Grafikdateien werden abgefangen und nicht improvt.
+
 18.02.2024
 filesystem Methode für den ramroot Modus eingerichtet. Verzicht auf zusätzliche ramdisks.
 
