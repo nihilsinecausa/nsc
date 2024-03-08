@@ -627,7 +627,8 @@ for DIR in "$SOURCE_PATH"/*; do
                 continue
             # Den Fall abfangen, dass es sich um eine Grafikdatei handelt
             elif [ "$POSTFIX" == "jpg" ] || [ "$POSTFIX" == "png" ] || [ "$POSTFIX" == "bmp" ]; then
-                echo "Die Datei $FILENAME ist eine Grafikdatei. Dieser Fall wird ignoriert."
+                echo "Die Datei $FILENAME ist eine Grafikdatei, sie wird normal kopiert."
+                cp -v "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$TARGET_PATH$DIRNAME"
                 continue
             else
                 echo "Die Datei $FILENAME ist weder _improved.txt noch eine Grafikdatei"
