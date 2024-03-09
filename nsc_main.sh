@@ -54,6 +54,7 @@ TARGET_TMP_DIR="_NSC_TMP_IMPROVED"
 MOUNT_PATH_TARGET="/mnt/target"
 CONFIGFILE="_config.txt"
 INFOFILE="_improved.txt"
+TMP_STATUS_FILE="tmp_status.txt"
 
 # Hilfsvariable für die RAM Laufwerke
 WPATH=""
@@ -98,6 +99,8 @@ NEWLY_IMPROVED_FILES_SIZE=0
 MAX_M_ATTEMPTS=10
 M_ATTEMPT=0
 
+# Hilfsvariabe für chen and ensure Bit-Identity
+NBI_MAX=10
 
 ###################################################################################################
 #                   Definition von Funktionen für das Script
@@ -128,8 +131,8 @@ print_basic_info()
     CURRENT_TIME=$(date +"%H:%M")
     echo -n "Aktuelle Uhrzeit: "
     echo $CURRENT_TIME
-    echo -n "Folgender User führt dieses Script aus: "
-    who am i
+#    echo -n "Folgender User führt dieses Script aus: "
+#    who am i
     echo ""
     echo -n "Momentanes Arbeitsverzeichnis dieses Scripts: "
     pwd
@@ -168,6 +171,10 @@ print_basic_info()
     echo $SLOW_DSYNCS_PER_SECOND
     echo -n "Zahl der Refreshes bevor auf die Ramdisk geschrieben wird: SLOW_NR_REFRESHS="
     echo $SLOW_NR_REFRESHS
+    echo -n "Wird die zu improvende Datei vor dem ersten Verarbeitungsdurchlauf defragmentiert? DEFRAG="
+    echo $DEFRAG
+    echo -n "Im Fall von Bit-Identitätsverletzung, maximale Durchläufe der Wiederholungsschleife: NBI_MAX="
+    echo $NBI_MAX 
     echo -n "Wartezeit in Sekunden, bevor die ersten Schreibvorgänge gestartet werden:"
     echo $LSLEEP
     echo -n "Kurzschlafzeit in Sekunden:"
@@ -186,8 +193,8 @@ print_status()
     CURRENT_TIME=$(date +"%H:%M")
     echo -n "Aktuelle Uhrzeit: "
     echo $CURRENT_TIME
-    echo ""
-    /boot/dietpi/dietpi-cpuinfo
+#    echo ""
+#    /boot/dietpi/dietpi-cpuinfo
     echo ""
     echo "Aktueller Stand der Bearbeitung (ca.-Angaben): "
     IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
@@ -226,7 +233,7 @@ analyse_frag_and_defrag(){
         echo "Wiederholung der Analyse, ob Datei $1 fragmentiert ist"
         filefrag -v "$1"
     else
-        # Variable DEFRAG existiert nicht oder ist nicht auf 1 gesetzt
+        # Variabcmp -s "$1" "$2"le DEFRAG existiert nicht oder ist nicht auf 1 gesetzt
         echo "DEFRAG ist nicht auf 1 gesetzt oder existiert nicht. Die Quelldatei $1 wird nicht defragmentiert"
     fi
 }
@@ -244,6 +251,56 @@ check_bit_identity(){
         exit 1
     fi
 }
+
+# Hilfsfunktion um das Schreiben auf den physischen Datenträger sicherzustellen
+force_writing(){
+    echo "force_writing aufgerufen."
+    sync
+    sleep $UFSLEEP
+    vmtouch -e "$1"
+    sleep $UFSLEEP
+    ensure_umount_and_mount
+}
+
+# Alternatives Verfahren: Sicherstellen der Bit-Identität mit Anwendung von langsamen Improven
+check_and_ensure_bit_identity(){
+    if cmp -s "$1" "$2"; then
+        # if-Zweig (Bedingung: cmp -s "$1" "$2")
+        echo "Die Dateien $1 und $2 sind Bit-identisch."
+    else
+        # else-Zweig (Bedingung: cmp -s "$1" "$2" nicht erfolgreich)
+        echo "Die Dateien $1 und $2 sind NICHT Bit-identisch. Starte Wiederholungsschleife zum Improven."
+        for ((NBI=1; NBI<=NBI_MAX; NBI++)); do
+            echo "Schleifendurchlauf Nr. $NBI."
+            rm -v "$2"
+            schaffwas_slow "$1" "$2"
+            force_writing "$2"
+
+            # Überprüfen der Bit-Identität
+            if cmp -s "$1" "$2"; then
+                # Positive Erfolgsmeldung und Beenden der Schleife
+                echo "Bit-Identität gegeben. Weiter in der großen for-Schleife zur Bearbeitung der Musikdateien."
+                break
+            else
+                # Bit-Identität nicht gegeben
+                if [ "$NBI" -eq "$NBI_MAX" ]; then
+                    # Bit-Identität nicht gegeben und Schleife am Ende
+                    echo "Bit-Identität nicht gegeben und Wiederholungsschleife am Ende." 
+                    echo "Abbruch zum Schutz des physischen Datenträgers."
+                    echo ""
+                    echo "############################################################################################"
+                    echo "#               BIT IDENTITÄT VERLETZT - DAS SCRIPT $SCRIPTFILE WIRD BEENDET               #"
+                    echo "############################################################################################"
+                    nsc_cleanup
+                else
+                    # Bit-Identität nicht gegeben, aber Schleife läuft weiter
+                    echo "Bit-Identität nicht gegeben. Nächster Durchlauf in der Wiederholungsschleife."
+                fi
+            fi
+        done
+    fi
+}
+
 
 # Sicherstellen, dass der Mount-Point $MOUNT_PATH_TARGET ungemoutet udn wieder gemountet wird
 ensure_umount_and_mount(){
@@ -584,6 +641,8 @@ else
 fi
 
 
+print_basic_info > "$FILESYSTEM_PATH$TMP_STATUS_FILE"
+
 
 # Pausieren
 echo -n "Das Script pausiert jetzt "
@@ -613,6 +672,8 @@ for DIR in "$SOURCE_PATH"/*; do
         # Anlegen des Album-Verzeichnisses im Zielpfad
         mkdir -v "$TARGET_PATH$DIRNAME"
         cp -v "$ETC_PATH$INFOFILE" "$TARGET_PATH$DIRNAME"
+        # Anhängen der wichtigsten Settingsinfos an den Infofile auf dem phyischen Datenträger.
+        cat "$FILESYSTEM_PATH$TMP_STATUS_FILE" >> "$TARGET_PATH$DIRNAME$SLASH$INFOFILE"
 
         # Schleife durch die alle Files im laufenden Verzeichnis
         for FILE in "$SOURCE_PATH$DIRNAME"/*; do
@@ -720,13 +781,19 @@ for DIR in "$SOURCE_PATH"/*; do
 
                     # improvefile-Aufruf
                     schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
-                    check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
+#                    check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
 
                     # Sicherstellen, dass die Datei $TMP$N nicht nur in den Cache geschrieben wird
-                    sync
-                    sleep $UFSLEEP
-                    vmtouch -e "$WPATH$TMP$N"
-                    sleep $UFSLEEP
+#                    sync
+#                    sleep $UFSLEEP
+#                    vmtouch -e "$WPATH$TMP$N"
+#                    sleep $UFSLEEP
+
+                    # Sicherstellen, dass die Datei $WPATH$TMP$N nicht nur in den Cache geschrieben wird
+                    force_writing "$WPATH$TMP$N"
+
+                    # Prüfung auf Bit-Identität, Behebungsversuche durch Wiederholungsschleife sonst Abbruch des Hautpscripts.
+                    check_and_ensure_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
 
                     # Aufräumen in der Ramdisk
                     shred "$WPATH_PRE$TMP$NPRE"
@@ -752,13 +819,19 @@ for DIR in "$SOURCE_PATH"/*; do
 
                     # improvefile-Aufruf
                     schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
-                    check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
+#                    check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
 
                     # Sicherstellen, dass die Datei $TMP$N nicht nur in den Cache geschrieben wird
-                    sync
-                    sleep $UFSLEEP
-                    vmtouch -e "$WPATH$TMP$N"
-                    sleep $UFSLEEP
+#                    sync
+#                    sleep $UFSLEEP
+#                    vmtouch -e "$WPATH$TMP$N"
+#                    sleep $UFSLEEP
+
+                    # Sicherstellen, dass die Datei $WPATH$TMP$N nicht nur in den Cache geschrieben wird
+                    force_writing "$WPATH$TMP$N"
+
+                    # Prüfung auf Bit-Identität, Behebungsversuche durch Wiederholungsschleife sonst Abbruch des Hautpscripts.
+                    check_and_ensure_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
 
                     # Aufräumen
                     shred "$WPATH_PRE$TMP$NPRE"
@@ -783,13 +856,19 @@ for DIR in "$SOURCE_PATH"/*; do
 
                     echo "$WPATH$TMP$NPRE"
                     schaffwas_slow "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
-                    check_bit_identity "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
+#                    check_bit_identity "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
 
                     # Sicherstellen, dass die Datei "$TARGET_PATH$DIRNAME$SLASH$FILENAME" nicht nur in den Cache geschrieben wird
-                    sync
-                    sleep $UFSLEEP
-                    vmtouch -e "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
-                    sleep $UFSLEEP
+#                    sync
+#                    sleep $UFSLEEP
+#                    vmtouch -e "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
+#                    sleep $UFSLEEP
+
+                    # Sicherstellen, dass die Datei $WPATH$TMP$N nicht nur in den Cache geschrieben wird
+                    force_writing "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
+
+                    # Prüfung auf Bit-Identität, Behebungsversuche durch Wiederholungsschleife sonst Abbruch des Hautpscripts.
+                    check_and_ensure_bit_identity "$WPATH_PRE$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
 
                     # Aufräumen
                     shred "$WPATH$TMP$NPRE"
