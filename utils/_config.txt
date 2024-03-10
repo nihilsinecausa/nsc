@@ -22,6 +22,10 @@ RAM_SIZE=2G
 # Default: DEFRAG=1, anderenfalls DEFRAG=0 oder Weglassen der Variable
 DEFRAG=1
 
+# Soll das Script nach jedem erfolgreichen Improven, die betreffende Quelldatei löschen, um Speicher auf dem Datenträger zu sparen?
+# 0 für nein (default), 1 für ja
+DELETE_SOURCE=0
+
 # Variablen für das bufhrt Verfahren. 
 # Folgender Satz von Variablen mit der Vorsilbe "FAST" wird für die schnellen Durchläufe NMAX-1 verwendet, 
 # bei welchen auf die temporäre Ramdisk geschrieben wird

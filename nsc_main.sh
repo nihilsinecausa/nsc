@@ -55,6 +55,7 @@ MOUNT_PATH_TARGET="/mnt/target"
 CONFIGFILE="_config.txt"
 INFOFILE="_improved.txt"
 TMP_STATUS_FILE="tmp_status.txt"
+DELETE_SOURCE=0
 
 # Hilfsvariable für die RAM Laufwerke
 WPATH=""
@@ -123,6 +124,8 @@ schaffwas_slow(){
 print_basic_info()
 {
     echo ""
+    echo "--"
+    echo ""
     echo "Ermittelte Basis-Informationen"
     echo ""
     echo "Ramdisk-Methode ist auf $RAM_METHOD gesetzt."
@@ -145,6 +148,8 @@ print_basic_info()
     echo -n "Verzeichnis für temporär improvte Dateien: "
     echo "$TARGET_TMP_PATH"
     echo ""
+    echo -n "Sollen Quelldateien nach erfolgreichem Improven gelöscht werden? DELETE_SOURCE="
+    echo $DELETE_SOURCE
     echo -n "Anzahl der schnellen Durchläufe für jede Musikdatei: NMAX_RAM="
     echo $NMAX_RAM
     echo -n "Anzahl der langsamen Durchläufe für jede Musikdatei: NMAX_PHYS="
@@ -678,7 +683,20 @@ for DIR in "$SOURCE_PATH"/*; do
 
         # Anlegen des Album-Verzeichnisses im Zielpfad
         mkdir -v "$TARGET_PATH$DIRNAME"
-        cp -v "$ETC_PATH$INFOFILE" "$TARGET_PATH$DIRNAME"
+
+        # Umgang mit der Datei _improved.txt
+        # 1. Fall: DELETE_SOURCE steht auf 1 und die Datei existiert auf der Quellseite 
+        if [ "$DELETE_SOURCE" -eq 1 ] && [ -e "$SOURCE_PATH$DIRNAME$SLASH$INFOFILE" ]; then
+            # Verschieben der Datei "_improved.txt" ins Zielverzeichnis
+            mv -v "$SOURCE_PATH$DIRNAME$SLASH$INFOFILE" "$TARGET_PATH$DIRNAME/"
+        # 2. Fall: sonst
+        else
+        # Kopieren der Info-Datei aus dem ETC-Ordner
+            cp -v "$ETC_PATH$INFOFILE" "$TARGET_PATH$DIRNAME/"
+        fi
+
+#        cp -v "$ETC_PATH$INFOFILE" "$TARGET_PATH$DIRNAME"
+        
         # Anhängen der wichtigsten Settingsinfos an den Infofile auf dem phyischen Datenträger.
         cat "$FILESYSTEM_PATH$TMP_STATUS_FILE" >> "$TARGET_PATH$DIRNAME$SLASH$INFOFILE"
 
@@ -690,14 +708,21 @@ for DIR in "$SOURCE_PATH"/*; do
             # Analysiere die Dateiendung
             POSTFIX=$(echo "$FILENAME" | awk -F'.' '{print tolower($NF)}')
             # Den Fall abfangen, dass die zu improvende Datei "_improved.txt" heißt
-            if [ "$FILENAME" = "_improved.txt" ]; then
-                echo "Es wurde _improved.txt in den Quelldateien gefunden. Dieser Fall wird ignoriert."
+            if [ "$FILENAME" = "$INFOFILE" ]; then
+                echo "Es wurde $INFOFILE in den Quelldateien gefunden. Dieser Fall wird ignoriert."
                 continue
             # Den Fall abfangen, dass es sich um eine Grafik- oder pdf-datei handelt
             elif [ "$POSTFIX" == "jpg" ] || [ "$POSTFIX" == "png" ] || [ "$POSTFIX" == "bmp" ] || [ "$POSTFIX" == "pdf" ]; then
-                echo "Die Datei $FILENAME ist eine Grafik- oder pdf-datei, sie wird normal kopiert."
-                cp -v "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$TARGET_PATH$DIRNAME"
-                continue
+                echo "Die Datei $FILENAME ist eine Grafik- oder pdf-datei, sie wird normal kopiert bzw. verschoben."
+                # 1. Fall DELETE_SOURCE steht auf 1
+                if [ "$DELETE_SOURCE" -eq 1 ]; then
+                    mv -v "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$TARGET_PATH$DIRNAME"
+                    continue
+                2. Falls sonst
+                else
+                    cp -v "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$TARGET_PATH$DIRNAME"
+                    continue
+                fi
             else
                 echo "Die Datei $FILENAME ist weder _improved.txt noch eine Grafikdatei"
             fi
@@ -877,17 +902,33 @@ for DIR in "$SOURCE_PATH"/*; do
                     # Prüfung auf Bit-Identität, Behebungsversuche durch Wiederholungsschleife sonst Abbruch des Hautpscripts.
                     check_and_ensure_bit_identity "$WPATH_PRE$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
 
+                    # Nachdem das Improven erfolgreich abgeschlossen wurde, kann die Quelldatei ggf. gelöscht werden
+                    # 1. Fall: Die Variable DELETE_SOURCE steht auf 1
+                    if [ "$DELETE_SOURCE" -eq 1 ]; then
+                        rm -v "$SOURCE_PATH$DIRNAME$SLASH$FILENAME"
+                        echo "Die Quelldatei $FILENAME wurde wunschgemäß gelöscht."
+                    # 2. Fall: sonst
+                    else
+                        echo "Die Quelldatei bleibt wunschgemäß erhalten."
+                    fi
+
                     # Aufräumen
                     shred "$WPATH$TMP$NPRE"
                     rm -v "$WPATH$TMP$NPRE"
                     ensure_umount_and_mount
 
                     echo "improvefile-Anwendung für diese Musikdatei  abgeschlossen"
-                fi
-            done
-        done
-    fi
-done
+                fi # 5 Fälle abgeschlossen
+            done # for-Schleife NMAX Dateibehandlung abgeschlossen
+        done # for-Schleife Behandlung aller Dateien im Albumordner
+        # Für den Fall, dass der Albumordner leer ist, kann er gelöscht werden
+        if [ "$DELETE_SOURCE" -eq 1 ]; then
+            rmdir -v "$SOURCE_PATH$DIRNAME"
+        else
+            echo "Albumordner wird nicht gelöscht."
+        fi
+    fi # Es handelte sich um ein Verzeichnis = Albumordner auf der Quellseite
+done # for-Schleife behandlung aller Albumordner
 
 # Aufräumarbeiten zum Script-Ende
 nsc_cleanup

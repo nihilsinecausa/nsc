@@ -2,6 +2,13 @@ Dieses nsc Script-Paket dient zur Unterstützung von improvefile auf einem Linux
 Es basiert auf frankl's stereo utilities. Es gilt die GNU License (cf License.txt)
 Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
+10.03.2024
+Das Hauptscript kann nun so konfiguriert werden, dass bereits improvte Dateien aus dem Quellordner gelöscht werden.
+Die Steuerung dazu erfolgt mit der Variablen DELETE_SOURCE in der _config.txt Datei.
+Das Hauptscript kann jetzt gezielt mit dem Hilfsscript "nsc_kill.sh" abgebrochen werden. 
+Dabei werden alle umount Befehle ordnungsgemäß ausgeführt. 
+In Kombination mit DELETE_SOURCE=1 kann so die Bearbeitung jederzeit gestoppt und zu einem späteren Zeitpunkt wieder angestartet werden.
+
 09.03.3034
 Im Fall von Bit-Identitätsverletzung wird das Improven bis zu 10 mal durchgeführt, bevor das Script abgebrochen wird.
 Die Settings werden nicht nur in die Log-Datei sondern auch in die _improved.txt auf dem Zieldatenträger geschrieben.
