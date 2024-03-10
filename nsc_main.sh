@@ -408,6 +408,8 @@ destroy_ram(){
 # Aufräumarbeiten zum Script-Ende
 nsc_cleanup()
 {
+    echo ""
+    echo "Funktion nsc_cleanup gestartet."
 # Umgang mit Ordner $TARGET_TMP_PATH
 # Überprüfe, ob das Verzeichnis existiert
     if [ -d "$TARGET_TMP_PATH" ]; then
@@ -431,6 +433,8 @@ nsc_cleanup()
 
     # Kopiere nohup.out in den Logfile
     cp -v nohup.out $ETC_PATH$LOGFILE
+    sync
+    sleep $UFSLEEP
 
     if [ $AUTO_MOUNT -eq 1 ]; then
         # Unmounte alle im Skript gemounteten Verzeichnisse
@@ -453,6 +457,9 @@ echo "##########################################################################
 echo "#                             SCRIPT nsc_main.sh GESTARTET                                 #"
 echo "############################################################################################"
 echo ""
+
+# Trap-Konfiguration für das Abfangen von Signalen, damit lässt sich das Hauptscript gesichert abschalten
+trap 'nsc_cleanup' EXIT
 
 # Auslesen der Variablen aus der Datei "$SETTINGS", sofern diese vorhanden ist
 # sowie ggf. Überschreiben der default-Werte
