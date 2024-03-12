@@ -68,6 +68,9 @@ Alle Aufrufe als root
 
 Damit startet das Hauptscript "nsc_main.sh" im Hintergrund und die Bearbeitung läuft automatisch ab.
 
+Optional kann der Aufruf mit dem Parameter "-check" erfolgen. Dann werden lediglich Informationen 
+über die Speichersituation ausgegeben. 
+
 Um einen Überblick über die Bearbeitung zu bekommen, kann man mit dem Aufruf
 
     "info.sh"

@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRIPTTEXT="Script nsc.sh, Version vom 09.02.2024"
+SCRIPTTEXT="Script nsc.sh, Version vom 12.03.2024"
 SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad speichern zu können
 # basierend auf frankl-stereo utils (GNU Licence)
 # Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
@@ -88,10 +88,11 @@ SLOW_BYTES_PER_SECOND=8192000
 SLOW_DSYNCS_PER_SECOND=100
 SLOW_NR_REFRESHS=3
 LSLEEP=60
-FSLEEP=5
+FSLEEP=10
 UFSLEEP=1
 
-# Hilfsvariable für die Fortschrittberechung
+# Hilfsvariable für die Fortschrittberechung, alle Angaben in Bytes
+FORMER_IMPROVED_FILES_SIZE=0
 IMPROVED_FILES_SIZE=0
 TO_BE_IMPROVED_FILES_SIZE=0
 NEWLY_IMPROVED_FILES_SIZE=0
@@ -102,6 +103,49 @@ M_ATTEMPT=0
 
 # Hilfsvariabe für chen and ensure Bit-Identity
 NBI_MAX=10
+
+# Hilfsvariablen für die Speicherplatzberechnung, alle Angaben in Bytes
+CHECK_STORAGE=0
+MAX_SOURCE_FILE_SIZE=0
+MAX_TARGET_FILE_SIZE=0
+MAX_FILE_SIZE=0
+CAPACITY=0
+SPARE_CAPACITY=16384
+REMAINING_CAPACITY=0
+
+###################################################################################################
+#                   Aufruf des Scripts ggf. mit Optionen
+###################################################################################################
+
+# Funktion zur Anzeige der Hilfe
+show_help() {
+    echo "Usage: nsc_main.sh [OPTIONS]"
+    echo "Options:"
+    echo "  -check   Enable check storage mode (set CHECK_STORAGE to 1)"
+    echo "  -h, --help   Show this help message"
+}
+
+# Optionen verarbeiten
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -check)
+            CHECK_STORAGE=1
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "Unbekannte Option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+# Beispiel: Ausgabe des aktuellen Werts von CHECK_STORAGE
+# echo "CHECK_STORAGE is set to: $CHECK_STORAGE"
 
 ###################################################################################################
 #                   Definition von Funktionen für das Script
@@ -126,16 +170,13 @@ print_basic_info()
     echo ""
     echo "--"
     echo ""
-    echo "Ermittelte Basis-Informationen"
+    echo "IMPROVEFILE NSC SCRIPTSET SETTINGS"
     echo ""
-    echo "Ramdisk-Methode ist auf $RAM_METHOD gesetzt."
-    echo -n "Version: "
+    CURRENT_DATETIME=$(date "+%d.%m.%Y %H:%M")
+    echo -n "Datum und Uhrzeit: "
+    echo $CURRENT_DATETIME
+    echo -n "Script-Info: "
     echo "$SCRIPTTEXT"
-    CURRENT_TIME=$(date +"%H:%M")
-    echo -n "Aktuelle Uhrzeit: "
-    echo $CURRENT_TIME
-#    echo -n "Folgender User führt dieses Script aus: "
-#    who am i
     echo ""
     echo -n "Momentanes Arbeitsverzeichnis dieses Scripts: "
     pwd
@@ -148,43 +189,45 @@ print_basic_info()
     echo -n "Verzeichnis für temporär improvte Dateien: "
     echo "$TARGET_TMP_PATH"
     echo ""
-    echo -n "Sollen Quelldateien nach erfolgreichem Improven gelöscht werden? DELETE_SOURCE="
+    echo -n "Ramdisk-Methode ist gesetzt auf: " 
+    echo $RAM_METHOD
+    echo -n "Sollen Quelldateien nach erfolgreichem Improven gelöscht werden? DELETE_SOURCE = "
     echo $DELETE_SOURCE
-    echo -n "Anzahl der schnellen Durchläufe für jede Musikdatei: NMAX_RAM="
+    echo -n "Anzahl der schnellen Durchläufe für jede Musikdatei: NMAX_RAM = "
     echo $NMAX_RAM
-    echo -n "Anzahl der langsamen Durchläufe für jede Musikdatei: NMAX_PHYS="
+    echo -n "Anzahl der langsamen Durchläufe für jede Musikdatei: NMAX_PHYS = "
     echo $NMAX_PHYS
-    echo -n "Anzahl der Durchläufe für jede Musikdatei: NMAX="
+    echo -n "Anzahl der Durchläufe für jede Musikdatei: NMAX = "
     echo $NMAX
-    echo -n "Puffergröße ind Bytes: FAST_BUFFER_SIZE="
+    echo -n "Puffergröße ind Bytes: FAST_BUFFER_SIZE = "
     echo $FAST_BUFFER_SIZE
-    echo -n "Loops pro Sekunde FAST_LOOPS_PER_SECOND="
+    echo -n "Loops pro Sekunde FAST_LOOPS_PER_SECOND = "
     echo $FAST_LOOPS_PER_SECOND
-    echo -n "Bytes pro Sekunde FAST_BYTES_PER_SECOND="
+    echo -n "Bytes pro Sekunde FAST_BYTES_PER_SECOND = "
     echo $FAST_BYTES_PER_SECOND
-    echo -n "Schreibvorgänge pro Sekunde FAST_DSYNCS_PER_SECOND="
+    echo -n "Schreibvorgänge pro Sekunde FAST_DSYNCS_PER_SECOND = "
     echo $FAST_DSYNCS_PER_SECOND
-    echo -n "Zahl der Refreshes bevor auf die Ramdisk geschrieben wird: FAST_NR_REFRESHS="
+    echo -n "Zahl der Refreshes bevor auf die Ramdisk geschrieben wird: FAST_NR_REFRESHS = "
     echo $FAST_NR_REFRESHS
-    echo -n "Puffergröße ind Bytes: SLOW_BUFFER_SIZE="
+    echo -n "Puffergröße ind Bytes: SLOW_BUFFER_SIZE = "
     echo $SLOW_BUFFER_SIZE
-    echo -n "Loops pro Sekunde SLOW_LOOPS_PER_SECOND="
+    echo -n "Loops pro Sekunde SLOW_LOOPS_PER_SECOND = "
     echo $SLOW_LOOPS_PER_SECOND
-    echo -n "Bytes pro Sekunde SLOW_BYTES_PER_SECOND="
+    echo -n "Bytes pro Sekunde SLOW_BYTES_PER_SECOND = "
     echo $SLOW_BYTES_PER_SECOND
-    echo -n "Schreibvorgänge pro Sekunde SLOW_DSYNCS_PER_SECOND="
+    echo -n "Schreibvorgänge pro Sekunde SLOW_DSYNCS_PER_SECOND = "
     echo $SLOW_DSYNCS_PER_SECOND
-    echo -n "Zahl der Refreshes bevor auf die Ramdisk geschrieben wird: SLOW_NR_REFRESHS="
+    echo -n "Zahl der Refreshes bevor auf die Ramdisk geschrieben wird: SLOW_NR_REFRESHS = "
     echo $SLOW_NR_REFRESHS
-    echo -n "Wird die zu improvende Datei vor dem ersten Verarbeitungsdurchlauf defragmentiert? DEFRAG="
+    echo -n "Wird die zu improvende Datei vor dem ersten Verarbeitungsdurchlauf defragmentiert? DEFRAG = "
     echo $DEFRAG
-    echo -n "Im Fall von Bit-Identitätsverletzung, maximale Durchläufe der Wiederholungsschleife: NBI_MAX="
+    echo -n "Im Fall von Bit-Identitätsverletzung, maximale Durchläufe der Wiederholungsschleife: NBI_MAX = "
     echo $NBI_MAX 
-    echo -n "Wartezeit in Sekunden, bevor die ersten Schreibvorgänge gestartet werden:"
+    echo -n "Wartezeit in Sekunden, bevor die ersten Schreibvorgänge gestartet werden: "
     echo $LSLEEP
-    echo -n "Kurzschlafzeit in Sekunden:"
+    echo -n "Kurzschlafzeit in Sekunden: "
     echo $FSLEEP
-    echo -n "Ultra-Kurzschlafzeit in Sekunden:"
+    echo -n "Ultra-Kurzschlafzeit in Sekunden: "
     echo $UFSLEEP
 }
 
@@ -202,7 +245,7 @@ print_status()
 #    /boot/dietpi/dietpi-cpuinfo
     echo ""
     echo "Aktueller Stand der Bearbeitung (ca.-Angaben): "
-    IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
+    IMPROVED_FILES_SIZE=$(du -sb "$TARGET_PATH" | awk '{print $1}')
     NEWLY_IMPROVED_FILES_SIZE=$((IMPROVED_FILES_SIZE - FORMER_IMPROVED_FILES_SIZE))
     PROGRESS=$((NEWLY_IMPROVED_FILES_SIZE *100 / TO_BE_IMPROVED_FILES_SIZE))
     echo "$PROGRESS % von 100 %"
@@ -219,7 +262,7 @@ print_kurzstatus()
     echo "$FILENAME"
 
     echo -n "Aktueller Stand der Bearbeitung (ca.-Angaben): "
-    IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
+    IMPROVED_FILES_SIZE=$(du -sb "$TARGET_PATH" | awk '{print $1}')
     NEWLY_IMPROVED_FILES_SIZE=$((IMPROVED_FILES_SIZE - FORMER_IMPROVED_FILES_SIZE))
     PROGRESS=$((NEWLY_IMPROVED_FILES_SIZE *100 / TO_BE_IMPROVED_FILES_SIZE))
     echo "$PROGRESS % von 100 %"
@@ -260,10 +303,11 @@ check_bit_identity(){
 # Hilfsfunktion um das Schreiben auf den physischen Datenträger sicherzustellen
 force_writing(){
     echo "force_writing aufgerufen."
+    sleep $FSLEEP
     sync
     sleep $UFSLEEP
     vmtouch -e "$1"
-    sleep $UFSLEEP
+    sleep $FSLEEP
     ensure_umount_and_mount
 }
 
@@ -297,6 +341,7 @@ check_and_ensure_bit_identity(){
                     echo "#               BIT IDENTITÄT VERLETZT - DAS SCRIPT $SCRIPTFILE WIRD BEENDET               #"
                     echo "############################################################################################"
                     nsc_cleanup
+                    exit 1
                 else
                     # Bit-Identität nicht gegeben, aber Schleife läuft weiter
                     echo "Bit-Identität nicht gegeben. Nächster Durchlauf in der Wiederholungsschleife."
@@ -432,9 +477,11 @@ nsc_cleanup()
     MINUTES=$(( ($RUNTIME % 3600) /60 ))
     SECONDS=$(( $RUNTIME % 60 ))
     echo "Laufzeit des Scripts: $HOURS Stunde(n), $MINUTES Minute(n) und $SECONDS Sekunden"
+    echo ""
     echo "############################################################################################"
     echo "#                                 nsc_main.sh SCRIPT ENDE                                  #"
     echo "############################################################################################"
+    echo ""
 
     # Kopiere nohup.out in den Logfile
     cp -v nohup.out $ETC_PATH$LOGFILE
@@ -458,10 +505,10 @@ nsc_cleanup()
 ###################################################################################################
 
 # Start der Scriptausgabe
+echo ""
 echo "############################################################################################"
 echo "#                             SCRIPT nsc_main.sh GESTARTET                                 #"
 echo "############################################################################################"
-echo ""
 
 # Trap-Konfiguration für das Abfangen von Signalen, damit lässt sich das Hauptscript gesichert abschalten
 trap 'nsc_cleanup' EXIT
@@ -580,8 +627,8 @@ else
 fi
 
 # Diese Berechnungen müssen nach dem Einlesen erfolgen.
-FORMER_IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
-TO_BE_IMPROVED_FILES_SIZE=$(du -s "$SOURCE_PATH" | awk '{print $1}')
+FORMER_IMPROVED_FILES_SIZE=$(du -sb "$TARGET_PATH" | awk '{print $1}')
+TO_BE_IMPROVED_FILES_SIZE=$(du -sb "$SOURCE_PATH" | awk '{print $1}')
 NMAX=$((NMAX_RAM + NMAX_PHYS))
 # Umgang mit den mount options
 if [ $AUTO_MOUNT -eq 1 ]; then
@@ -589,8 +636,8 @@ if [ $AUTO_MOUNT -eq 1 ]; then
 fi
 
 # Vorbereitung für das Ausgeben des laufenden Bearbeitungsstandes:
-IMPROVED_FILES_SIZE=$(du -s "$TARGET_PATH" | awk '{print $1}')
-TO_BE_IMPROVED_FILES_SIZE=$(du -s "$SOURCE_PATH" | awk '{print $1}')
+IMPROVED_FILES_SIZE=$(du -sb "$TARGET_PATH" | awk '{print $1}')
+TO_BE_IMPROVED_FILES_SIZE=$(du -sb "$SOURCE_PATH" | awk '{print $1}')
 
 # Starte das Script und zeige die Config-Info
 print_basic_info
@@ -653,14 +700,91 @@ else
 fi
 
 
-print_basic_info > "$FILESYSTEM_PATH$TMP_STATUS_FILE"
+###################################################################################################
+#      Berechnung und Anzeige der Speichersituation, Terminierung falls CHECK_STORAGE auf 1 gesetzt
+###################################################################################################
 
+# Ermittlung der Gesamtkapazität des gemounteten Datenträgers
+CAPACITY=$(df --output=size --block-size=1 "$MOUNT_PATH_TARGET" | tail -n 1)
+
+# Größe der größten Datei im Zielverzeichnis ermitteln
+MAX_TARGET_FILE_SIZE=$(find "$TARGET_PATH" -type f -exec du -b {} + | sort -n | tail -n 1 | awk '{print $1}')
+
+# Größe der größten Datei im Quellverzeichnis ermitteln
+MAX_SOURCE_FILE_SIZE=$(find "$SOURCE_PATH" -type f -exec du -b {} + | sort -n | tail -n 1 | awk '{print $1}')
+
+# Größte Dateigröße auswählen
+if [ "$MAX_TARGET_FILE_SIZE" -gt "$MAX_SOURCE_FILE_SIZE" ]; then
+    MAX_FILE_SIZE=$MAX_TARGET_FILE_SIZE
+else
+    MAX_FILE_SIZE=$MAX_SOURCE_FILE_SIZE
+fi
+
+REMAINING_CAPACITY=$((CAPACITY - FORMER_IMPROVED_FILES_SIZE - TO_BE_IMPROVED_FILES_SIZE - 2*MAX_FILE_SIZE - SPARE_CAPACITY))
+
+echo ""
+echo "Speichersituation, Angaben in Byte"
+echo -n "Soll nur eine Storage-Info ausgegeben werden? CHECK_STORAGE = "
+echo $CHECK_STORAGE
+echo -n "Gesamtkapazität auf dem Ziel-Datenträger CAPACITY = "
+echo -n $CAPACITY
+echo -n " =ca. "
+echo -n $((CAPACITY/1048576))
+echo " Megabyte"
+echo -n "Bereits improvte Dateien FORMER_IMPROVED_FILES_SIZE = "
+echo -n $FORMER_IMPROVED_FILES_SIZE
+echo -n " =ca. "
+echo -n $((FORMER_IMPROVED_FILES_SIZE/1048576))
+echo " Megabyte"
+echo -n "Noch zu improvende Dateien  TO_BE_IMPROVED_FILES_SIZE = "
+echo -n $TO_BE_IMPROVED_FILES_SIZE
+echo -n " =ca. "
+echo -n $((TO_BE_IMPROVED_FILES_SIZE/1048576))
+echo " Megabyte"
+echo -n "Doppelte Größe der größten Musikdatei 2*MAX_FILE_SIZE = "
+echo -n $((2*MAX_FILE_SIZE))
+echo -n " =ca. "
+echo -n $((2*MAX_FILE_SIZE/1048576))
+echo " Megabyte"
+echo -n "Mindestens verbleibende Kapazität auf dem Ziel-Datenträger SPARE_CAPACITY = "
+echo $SPARE_CAPACITY
+echo -n "Nach der Verarbeitung verbleibende Restkapazität auf dem Ziel-Datenträger REMAINING_CAPACITY = "
+echo -n $REMAINING_CAPACITY 
+echo -n " Byte"
+echo -n " =ca. "
+echo -n $((REMAINING_CAPACITY/1048576))
+echo -n " Megabyte"
+echo ""
+
+# Überprüfe, ob die verbleibende Kapazität kleiner oder gleich Null ist
+if [ "$REMAINING_CAPACITY" -le 0 ]; then
+    echo "Fehler: Die Speicherkapazität auf dem Zieldatenträger ist nicht ausreichend für die Bearbeitung."
+    echo "Bitte Datenmenge reduziern. Abbruch des Scripts."
+    echo "############################################################################################"
+    echo "#                 SPEICHERKAPAZITÄT AUF ZIELDATENTRÄGER NICHT AUSREICHEND                  #"
+    ECHO "#                 DAS SCRIPT $SCRIPTFILE WIRD BEENDET               #"
+    echo "############################################################################################"
+    nsc_cleanup
+    exit 1
+else
+    echo "Die Speicherkapazität auf dem Zieldatenträger ist ausreichend. Die Bearbeitung ist sinnvoll möglich."
+fi
+
+# Überprüfen, ob CHECK_STORAGE auf 1 gesetzt ist und das Skript beenden
+if [ "$CHECK_STORAGE" -eq 1 ]; then
+    echo ""
+    echo "Die eigentliche Bearbeitung wird nicht ausgeführt, gemäß Aufruf des Scripts nur Check Storage Funktionalität."
+    exit 0
+fi
+
+print_basic_info > "$FILESYSTEM_PATH$TMP_STATUS_FILE"
 
 # Pausieren
 echo -n "Das Script pausiert jetzt "
 echo -n $LSLEEP
 echo -e " Sekunde(n). \n"
 sleep $LSLEEP
+
 
 ###################################################################################################
 #       START DER EIGENTLICHEN ABARBEITUNG - DURCHGANG DURCH DIE ALBUM-VERZEICHNISSE
@@ -694,8 +818,6 @@ for DIR in "$SOURCE_PATH"/*; do
         # Kopieren der Info-Datei aus dem ETC-Ordner
             cp -v "$ETC_PATH$INFOFILE" "$TARGET_PATH$DIRNAME/"
         fi
-
-#        cp -v "$ETC_PATH$INFOFILE" "$TARGET_PATH$DIRNAME"
         
         # Anhängen der wichtigsten Settingsinfos an den Infofile auf dem phyischen Datenträger.
         cat "$FILESYSTEM_PATH$TMP_STATUS_FILE" >> "$TARGET_PATH$DIRNAME$SLASH$INFOFILE"
@@ -777,8 +899,6 @@ for DIR in "$SOURCE_PATH"/*; do
                     NPRE=$(($N - 1))
                     create_ram $N
 
-                    # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
-#                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
                     # improvefile-Aufruf
                     schaffwas_fast "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
                     check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
@@ -808,18 +928,8 @@ for DIR in "$SOURCE_PATH"/*; do
                     WPATH_PRE="$WPATH"
                     WPATH="$TARGET_TMP_PATH"
 
-                    # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
-#                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
-
                     # improvefile-Aufruf
                     schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
-#                    check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
-
-                    # Sicherstellen, dass die Datei $TMP$N nicht nur in den Cache geschrieben wird
-#                    sync
-#                    sleep $UFSLEEP
-#                    vmtouch -e "$WPATH$TMP$N"
-#                    sleep $UFSLEEP
 
                     # Sicherstellen, dass die Datei $WPATH$TMP$N nicht nur in den Cache geschrieben wird
                     force_writing "$WPATH$TMP$N"
@@ -846,18 +956,8 @@ for DIR in "$SOURCE_PATH"/*; do
                     WPATH_PRE="$WPATH"
                     WPATH="$TARGET_TMP_PATH"
 
-                    # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
-#                    analyse_frag_and_defrag "$WPATH_PRE$TMP$NPRE"
-
                     # improvefile-Aufruf
                     schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
-#                    check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
-
-                    # Sicherstellen, dass die Datei $TMP$N nicht nur in den Cache geschrieben wird
-#                    sync
-#                    sleep $UFSLEEP
-#                    vmtouch -e "$WPATH$TMP$N"
-#                    sleep $UFSLEEP
 
                     # Sicherstellen, dass die Datei $WPATH$TMP$N nicht nur in den Cache geschrieben wird
                     force_writing "$WPATH$TMP$N"
@@ -883,18 +983,8 @@ for DIR in "$SOURCE_PATH"/*; do
                     NPRE=$(($N - 1))
                     WPATH_PRE="$WPATH"
 
-                    # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
-#                    analyse_frag_and_defrag "$WPATH$TMP$NPRE"
-
                     echo "$WPATH$TMP$NPRE"
                     schaffwas_slow "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
-#                    check_bit_identity "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
-
-                    # Sicherstellen, dass die Datei "$TARGET_PATH$DIRNAME$SLASH$FILENAME" nicht nur in den Cache geschrieben wird
-#                    sync
-#                    sleep $UFSLEEP
-#                    vmtouch -e "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
-#                    sleep $UFSLEEP
 
                     # Sicherstellen, dass die Datei $WPATH$TMP$N nicht nur in den Cache geschrieben wird
                     force_writing "$TARGET_PATH$DIRNAME$SLASH$FILENAME"

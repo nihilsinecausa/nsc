@@ -2,6 +2,12 @@ Dieses nsc Script-Paket dient zur Unterstützung von improvefile auf einem Linux
 Es basiert auf frankl's stereo utilities. Es gilt die GNU License (cf License.txt)
 Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
+12.03.2024
+Das Hauptscript ermittelt nun die Dateigrößen und prüft, ob der Datenträger genügend Speicherplatz für eine Bearbeitung besitzt.
+Die resultierenden Daten werden ausgegeben. Die Bearbeitung wird nur gestartet, wenn der Speicherplatz ausreicht.
+Sowohl das Hauptscript als auch das Steuerscript "nsc.sh" lassen sich mit der Option "-check" aufrufen.
+In diesem Fall wird lediglich eine Statusinfo über die Speicherinformation ausgegeben und keine Bearbeigutn durchgeführt.
+
 10.03.2024
 Das Hauptscript kann nun so konfiguriert werden, dass bereits improvte Dateien aus dem Quellordner gelöscht werden.
 Die Steuerung dazu erfolgt mit der Variablen DELETE_SOURCE in der _config.txt Datei.
