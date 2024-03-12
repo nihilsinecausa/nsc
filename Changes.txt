@@ -3,6 +3,12 @@ Es basiert auf frankl's stereo utilities. Es gilt die GNU License (cf License.tx
 Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
 12.03.2024
+Der Aufruf von bufhrt erfolgt jetzt direkt aus dem Hauptscript. Das spart eine Redirektion über das Hilfsscript und es lässt sich
+einfacherer pflegen.
+Die Defragmentierung vor dem ersten Improvefile-Durchlauf ist per default ausgeschaltet. Dieses Feature hat sich nicht bewährt
+und es könnte kontraproduktiv sein, wenn die Quelle auf dem Zieldatenträger liegt. 
+
+12.03.2024
 Das Hauptscript ermittelt nun die Dateigrößen und prüft, ob der Datenträger genügend Speicherplatz für eine Bearbeitung besitzt.
 Die resultierenden Daten werden ausgegeben. Die Bearbeitung wird nur gestartet, wenn der Speicherplatz ausreicht.
 Sowohl das Hauptscript als auch das Steuerscript "nsc.sh" lassen sich mit der Option "-check" aufrufen.
