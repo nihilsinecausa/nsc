@@ -69,7 +69,7 @@ MNT_RAM_PATH="/mnt/ram"
 REMOUNT_OPTION=""
 # File-System Methode für den ramroot-Modus
 FILESYSTEM_PATH="/root/nsc/tmp/"
-DEFRAG=1
+DEFRAG=0
 
 # Default-Werte für das Verfahren
 RAM_METHOD="tmpfs"
@@ -151,18 +151,33 @@ done
 #                   Definition von Funktionen für das Script
 ###################################################################################################
 
-# Improvefile-Aufruf --> später verwenden
+# Zentrale Funktionen zum Aufruf von bufhrt mit entsprechenden Parametern, was dem improvefile Script entspricht
 schaffwas_fast(){
     echo "schaffwas_fast Aufruf"
-#    cp -v "$1" "$2"
-    taskset -c 1 nsc_improvefile.sh "$1" "$2" $FAST_BUFFER_SIZE $FAST_LOOPS_PER_SECOND $FAST_BYTES_PER_SECOND $FAST_DSYNCS_PER_SECOND $FAST_NR_REFRESHS
+    taskset -c 1 bufhrt --file="$1" --outfile="$2" --buffer-size=$FAST_BUFFER_SIZE \
+        --loops-per-second=$FAST_LOOPS_PER_SECOND --bytes-per-second=$FAST_BYTES_PER_SECOND \
+        --dsyncs-per-second=$FAST_DSYNCS_PER_SECOND --number-refreshs=$FAST_NR_REFRESHS --interval --verbose
 }
 
+# Zentrale Funktionen zum Aufruf von bufhrt mit entsprechenden Parametern, was dem improvefile Script entspricht
 schaffwas_slow(){
     echo "schaffwas_slow Aufruf"
-#    cp -v "$1" "$2"
-    taskset -c 1 nsc_improvefile.sh "$1" "$2" $SLOW_BUFFER_SIZE $SLOW_LOOPS_PER_SECOND $SLOW_BYTES_PER_SECOND $SLOW_DSYNCS_PER_SECOND $SLOW_NR_REFRESHS
+    taskset -c 1 bufhrt --file="$1" --outfile="$2" --buffer-size=$SLOW_BUFFER_SIZE \
+        --loops-per-second=$SLOW_LOOPS_PER_SECOND --bytes-per-second=$SLOW_BYTES_PER_SECOND \
+        --dsyncs-per-second=$SLOW_DSYNCS_PER_SECOND --number-refreshs=$SLOW_NR_REFRESHS --interval --verbose
 }
+
+
+# Ältere Varianten unter Verwendung des Hilfsscripts nsc_improvefile.sh
+# schaffwas_fast(){
+#    echo "schaffwas_fast Aufruf"
+#    taskset -c 1 nsc_improvefile.sh "$1" "$2" $FAST_BUFFER_SIZE $FAST_LOOPS_PER_SECOND $FAST_BYTES_PER_SECOND $FAST_DSYNCS_PER_SECOND $FAST_NR_REFRESHS
+#}
+
+#schaffwas_slow(){
+#    echo "schaffwas_slow Aufruf"
+#    taskset -c 1 nsc_improvefile.sh "$1" "$2" $SLOW_BUFFER_SIZE $SLOW_LOOPS_PER_SECOND $SLOW_BYTES_PER_SECOND $SLOW_DSYNCS_PER_SECOND $SLOW_NR_REFRESHS
+#}
 
 # Config-Infos ausgeben
 print_basic_info()

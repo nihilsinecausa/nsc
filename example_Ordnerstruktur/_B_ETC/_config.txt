@@ -18,9 +18,15 @@ RAM_METHOD=filesystem
 # Größe des RAM (wird nur bei der dynamischen Methode berücksichtigt), default 2G
 RAM_SIZE=2G
 
-# Soll das Script nach jedem Improven (bis auf den letzten Durchlauf) eine Defragmentierung der resultierenden Datei vornehmen?
-# Default: DEFRAG=1, anderenfalls DEFRAG=0 oder Weglassen der Variable
-DEFRAG=1
+# Soll das Script vor jedem Improven eine Defragmentierung der resultierenden Datei vornehmen?
+# Default: DEFRAG=0, anderenfalls DEFRAG=1 oder Weglassen der Variable
+# Hinweis: von einem Defragmentieren auf dem Zieldatenträger wird grundsätzlich abgeraten. 
+#    Wenn der Quellordner _A_SOURCE auf demselben Datenträger liegt wie der Zielordner _IMPROVED, dann DEFRAG ausgeschaltet lassen.
+DEFRAG=0
+
+# Soll das Script nach jedem erfolgreichen Improven, die betreffende Quelldatei löschen, um Speicher auf dem Datenträger zu sparen?
+# 0 für nein (default), 1 für ja
+DELETE_SOURCE=0
 
 # Variablen für das bufhrt Verfahren. 
 # Folgender Satz von Variablen mit der Vorsilbe "FAST" wird für die schnellen Durchläufe NMAX-1 verwendet, 

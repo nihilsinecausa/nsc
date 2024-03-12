@@ -19,8 +19,10 @@ RAM_METHOD=filesystem
 RAM_SIZE=2G
 
 # Soll das Script vor jedem Improven eine Defragmentierung der resultierenden Datei vornehmen?
-# Default: DEFRAG=1, anderenfalls DEFRAG=0 oder Weglassen der Variable
-DEFRAG=1
+# Default: DEFRAG=0, anderenfalls DEFRAG=1 oder Weglassen der Variable
+# Hinweis: von einem Defragmentieren auf dem Zieldatenträger wird grundsätzlich abgeraten. 
+#    Wenn der Quellordner _A_SOURCE auf demselben Datenträger liegt wie der Zielordner _IMPROVED, dann DEFRAG ausgeschaltet lassen.
+DEFRAG=0
 
 # Soll das Script nach jedem erfolgreichen Improven, die betreffende Quelldatei löschen, um Speicher auf dem Datenträger zu sparen?
 # 0 für nein (default), 1 für ja
