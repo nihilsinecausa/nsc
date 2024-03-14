@@ -479,7 +479,8 @@ nsc_cleanup()
 # Überprüfe, ob das Verzeichnis existiert
     if [ -d "$TARGET_TMP_PATH" ]; then
         # Das Verzeichnis existiert, lösche es mit seinem Inhalt
-        rm -r "$TARGET_TMP_PATH"
+        rm "$TARGET_TMP_PATH"*
+        rmdir "$TARGET_TMP_PATH"
         echo "Das Verzeichnis $TARGET_TMP_PATH und sein Inhalt wurden gelöscht."
     fi
 
@@ -777,7 +778,7 @@ if [ "$REMAINING_CAPACITY" -le 0 ]; then
     echo "Bitte Datenmenge reduziern. Abbruch des Scripts."
     echo "############################################################################################"
     echo "#                 SPEICHERKAPAZITÄT AUF ZIELDATENTRÄGER NICHT AUSREICHEND                  #"
-    ECHO "#                 DAS SCRIPT $SCRIPTFILE WIRD BEENDET               #"
+    echo "#                 DAS SCRIPT $SCRIPTFILE WIRD BEENDET               #"
     echo "############################################################################################"
     nsc_cleanup
     exit 1

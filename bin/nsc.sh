@@ -51,7 +51,16 @@ done
 cd "$WPATH"
 
 # Die Datei nohup.out ggf. löschen
-rm -f nohup.out
+if [ "$CHECK_STORAGE" != "1" ]; then
+    rm -f nohup.out
+fi
+
+if pgrep -x "nsc_main.sh" > /dev/null
+then
+    echo "Das Hauptscript kann nicht gestartet werden, da es bereits läuft."
+    echo "Falls gewünscht, kann das Hauptscript mit nsc_kill.sh angehalten werden."
+    exit 1
+fi
 
 echo "Das Hauptscript wird jetzt gestartet."
 echo "Alle  Terminal-Ausgaben werden unterdrückt."

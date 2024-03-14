@@ -2,6 +2,9 @@ Dieses nsc Script-Paket dient zur Unterstützung von improvefile auf einem Linux
 Es basiert auf frankl's stereo utilities. Es gilt die GNU License (cf License.txt)
 Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
+14.03.2024
+Verbesserter Umgang mit nohup.out. Fehlerbehebungen. Vermeidung von "rm -r" auf dem Zieldatenträger.
+
 12.03.2024
 Der Aufruf von bufhrt erfolgt jetzt direkt aus dem Hauptscript. Das spart eine Redirektion über das Hilfsscript und es lässt sich
 einfacherer pflegen.
