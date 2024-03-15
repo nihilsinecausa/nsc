@@ -5,7 +5,7 @@
 # Anzahl der improvefile-Durchläufe pro Audiodatei
 # für schnelle Improvefile-Durchläufe im RAM, Wert muss >= 2 sein, default 9
 # für besonders gute Ergebnissse NMAX_RAM=64
-NMAX_RAM=9
+NMAX_RAM=2
 # für langsame Improvefile-Durchläufe auf dem Zieldatenträger, Wert muss >=3 sein, default 3
 # für besonders gute Ergebnisse NMAX_PHYS=6
 NMAX_PHYS=3
@@ -19,13 +19,13 @@ RAM_METHOD=filesystem
 RAM_SIZE=2G
 
 # Soll das Script vor jedem Improven eine Defragmentierung der resultierenden Datei vornehmen?
-# Default: DEFRAG=0, anderenfalls DEFRAG=1 oder Weglassen der Variable
+# DEFRAG=0 für nein (default), anderenfalls DEFRAG=1 für ja. Weglassen fürht zu default.
 # Hinweis: von einem Defragmentieren auf dem Zieldatenträger wird grundsätzlich abgeraten. 
 #    Wenn der Quellordner _A_SOURCE auf demselben Datenträger liegt wie der Zielordner _IMPROVED, dann DEFRAG ausgeschaltet lassen.
 DEFRAG=0
 
 # Soll das Script nach jedem erfolgreichen Improven, die betreffende Quelldatei löschen, um Speicher auf dem Datenträger zu sparen?
-# 0 für nein (default), 1 für ja
+# DELETE_SOURCE=0 für nein (default), DELETE_SOURCE=1 für ja. Weglassen führt zu default.
 DELETE_SOURCE=0
 
 # Variablen für das bufhrt Verfahren. 
@@ -44,8 +44,12 @@ FAST_BYTES_PER_SECOND=536870912
 # Wert zum Schreiben auf den Zieldatenträger, hier Ramdisk, default 100
 FAST_DSYNCS_PER_SECOND=16384
 
+# Kopieren durch bufhrt in ein separates Speichersegment im RAM
+FAST_NR_COPIES=24
+
 # Refreshs im L1 Cache der CPU, bevor auf den Datenträger geschrieben wird, default 3
-FAST_NR_REFRESHS=1
+# Ältere Option, wird seit 15.03.2024 in frankl_stereo nicht mehr verwendet.
+FAST_NR_REFRESHS=3
 
 # Folgender Satz von Variablen mit der Vorsilbe "SLOW" wird für den letzten langsamen Durchlauf verwedet, 
 # bei welchem auf das Zielmedium geschrieben wird. Erläuterungen und default-Werte s.o. bei "FAST"
@@ -53,6 +57,7 @@ FAST_NR_REFRESHS=1
 SLOW_BUFFER_SIZE=536870912
 SLOW_LOOPS_PER_SECOND=16384
 SLOW_BYTES_PER_SECOND=33554432
+SLOW_NR_COPIES=24
 SLOW_DSYNCS_PER_SECOND=16384
 SLOW_NR_REFRESHS=1
 
