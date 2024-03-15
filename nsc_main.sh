@@ -1,5 +1,6 @@
 #!/bin/bash
-SCRIPTTEXT="Script nsc.sh, Version vom 12.03.2024"
+SCRIPTTEXT="Script nsc.sh, Version vom 15.03.2024"
+# Basierend auf frankl_stereo Version vom 15.03.2024
 SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad speichern zu können
 # basierend auf frankl-stereo utils (GNU Licence)
 # Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
@@ -22,16 +23,13 @@ SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad
 # - Das Script kopiert die Datei "_improved.txt" in die jeweiligen Musikordner im Zielverzeichnis,
 #       sofern eine solche Datei im Ordner "_B_ETC" vorhanden ist.
 #       In dieser Datei kann man (optional) die Bedingungen des Improvements individuell dokumentieren.
-# - Für die Standard-Ramdisk Methode benötigt das Script zwei Ramdisks.
-#       Dazu folgende Zeilen in die fstab eintragen und anschließend rebooten
-#       tmpfs    /mnt/nscram0    tmpfs    defaults,size=2048M    0    0
-#       tmpfs    /mnt/nscram1    tmpfs    defaults,size=2048M    0    0
-#
 
 ###################################################################################################
 #                  Definition von Variablen für das Script
 ###################################################################################################
-
+# Variablen nicht ändern! Veränderte Werte können über die über die Dateien _config.txt 
+# sowie ggf. über nsc_settings.txt eingesteuert werden.
+#
 # Hilfsvariable für das Script
 START_TIME=$(date +%s)
 SLASH='/'
@@ -57,52 +55,35 @@ INFOFILE="_improved.txt"
 TMP_STATUS_FILE="tmp_status.txt"
 DELETE_SOURCE=0
 
-# Hilfsvariable für die RAM Laufwerke
+# Hilfsvariable für die Laufwerke
 WPATH=""
 WPATH_PRE=""
-# Ramdisks für statische tmpfs Ramdisk Methode
-RAMDISK0="/mnt/nscram0/"
-RAMDISK1="/mnt/nscram1/"
-# Variablen für die Horst-Methode
-DEV_RAM_PATH="/dev/ram"
-MNT_RAM_PATH="/mnt/ram"
-REMOUNT_OPTION=""
-# File-System Methode für den ramroot-Modus
-FILESYSTEM_PATH="/root/nsc/tmp/"
 DEFRAG=0
 
-# Default-Werte für das Verfahren
-RAM_METHOD="tmpfs"
-NMAX_RAM=9
+# Hilfsvariable für mount und unmount
+REMOUNT_OPTION=""
+MAX_M_ATTEMPTS=10
+M_ATTEMPT=0
+
+# Default-Werte für die Durchführung
 NMAX_PHYS=3
-NMAX=$((NMAX_RAM + NMAX_PHYS))
-RAM_SIZE=2G
-FAST_BUFFER_SIZE=536870912
-FAST_LOOPS_PER_SECOND=2000
-FAST_BYTES_PER_SECOND=8192000
-FAST_DSYNCS_PER_SECOND=100
-FAST_NR_REFRESHS=3
-SLOW_BUFFER_SIZE=536870912
-SLOW_LOOPS_PER_SECOND=2000
-SLOW_BYTES_PER_SECOND=8192000
-SLOW_DSYNCS_PER_SECOND=100
-SLOW_NR_REFRESHS=3
+BUFFER_SIZE=536870912
+LOOPS_PER_SECOND=1024
+BYTES_PER_SECOND=8290304
+DSYNCS_PER_SECOND=32
+NR_COPIES=16
 LSLEEP=60
 FSLEEP=10
 UFSLEEP=1
+
+# Hilfsvariabe für check and ensure Bit-Identity
+NBI_MAX=10
 
 # Hilfsvariable für die Fortschrittberechung, alle Angaben in Bytes
 FORMER_IMPROVED_FILES_SIZE=0
 IMPROVED_FILES_SIZE=0
 TO_BE_IMPROVED_FILES_SIZE=0
 NEWLY_IMPROVED_FILES_SIZE=0
-
-# Hilfsvariable für mount und unmount
-MAX_M_ATTEMPTS=10
-M_ATTEMPT=0
-
-# Hilfsvariabe für chen and ensure Bit-Identity
-NBI_MAX=10
 
 # Hilfsvariablen für die Speicherplatzberechnung, alle Angaben in Bytes
 CHECK_STORAGE=0
@@ -152,32 +133,13 @@ done
 ###################################################################################################
 
 # Zentrale Funktionen zum Aufruf von bufhrt mit entsprechenden Parametern, was dem improvefile Script entspricht
-schaffwas_fast(){
-    echo "schaffwas_fast Aufruf"
-    taskset -c 1 bufhrt --file="$1" --outfile="$2" --buffer-size=$FAST_BUFFER_SIZE \
-        --loops-per-second=$FAST_LOOPS_PER_SECOND --bytes-per-second=$FAST_BYTES_PER_SECOND \
-        --dsyncs-per-second=$FAST_DSYNCS_PER_SECOND --number-refreshs=$FAST_NR_REFRESHS --interval --verbose
+schaffwas(){
+    echo "Aufruf von schaffwas"
+    taskset -c 1 bufhrt --interval --file="$1" --outfile="$2" --buffer-size=$BUFFER_SIZE \
+        --loops-per-second=$LOOPS_PER_SECOND --bytes-per-second=$BYTES_PER_SECOND \
+        --number-copies=$NR_COPIES --dsyncs-per-second=$DSYNCS_PER_SECOND --verbose
 }
 
-# Zentrale Funktionen zum Aufruf von bufhrt mit entsprechenden Parametern, was dem improvefile Script entspricht
-schaffwas_slow(){
-    echo "schaffwas_slow Aufruf"
-    taskset -c 1 bufhrt --file="$1" --outfile="$2" --buffer-size=$SLOW_BUFFER_SIZE \
-        --loops-per-second=$SLOW_LOOPS_PER_SECOND --bytes-per-second=$SLOW_BYTES_PER_SECOND \
-        --dsyncs-per-second=$SLOW_DSYNCS_PER_SECOND --number-refreshs=$SLOW_NR_REFRESHS --interval --verbose
-}
-
-
-# Ältere Varianten unter Verwendung des Hilfsscripts nsc_improvefile.sh
-# schaffwas_fast(){
-#    echo "schaffwas_fast Aufruf"
-#    taskset -c 1 nsc_improvefile.sh "$1" "$2" $FAST_BUFFER_SIZE $FAST_LOOPS_PER_SECOND $FAST_BYTES_PER_SECOND $FAST_DSYNCS_PER_SECOND $FAST_NR_REFRESHS
-#}
-
-#schaffwas_slow(){
-#    echo "schaffwas_slow Aufruf"
-#    taskset -c 1 nsc_improvefile.sh "$1" "$2" $SLOW_BUFFER_SIZE $SLOW_LOOPS_PER_SECOND $SLOW_BYTES_PER_SECOND $SLOW_DSYNCS_PER_SECOND $SLOW_NR_REFRESHS
-#}
 
 # Config-Infos ausgeben
 print_basic_info()
@@ -204,36 +166,20 @@ print_basic_info()
     echo -n "Verzeichnis für temporär improvte Dateien: "
     echo "$TARGET_TMP_PATH"
     echo ""
-    echo -n "Ramdisk-Methode ist gesetzt auf: " 
-    echo $RAM_METHOD
     echo -n "Sollen Quelldateien nach erfolgreichem Improven gelöscht werden? DELETE_SOURCE = "
     echo $DELETE_SOURCE
-    echo -n "Anzahl der schnellen Durchläufe für jede Musikdatei: NMAX_RAM = "
-    echo $NMAX_RAM
-    echo -n "Anzahl der langsamen Durchläufe für jede Musikdatei: NMAX_PHYS = "
+    echo -n "Anzahl der Durchläufe für jede Musikdatei: NMAX_PHYS = "
     echo $NMAX_PHYS
-    echo -n "Anzahl der Durchläufe für jede Musikdatei: NMAX = "
-    echo $NMAX
-    echo -n "Puffergröße ind Bytes: FAST_BUFFER_SIZE = "
-    echo $FAST_BUFFER_SIZE
-    echo -n "Loops pro Sekunde FAST_LOOPS_PER_SECOND = "
-    echo $FAST_LOOPS_PER_SECOND
-    echo -n "Bytes pro Sekunde FAST_BYTES_PER_SECOND = "
-    echo $FAST_BYTES_PER_SECOND
-    echo -n "Schreibvorgänge pro Sekunde FAST_DSYNCS_PER_SECOND = "
-    echo $FAST_DSYNCS_PER_SECOND
-    echo -n "Zahl der Refreshes bevor auf die Ramdisk geschrieben wird: FAST_NR_REFRESHS = "
-    echo $FAST_NR_REFRESHS
-    echo -n "Puffergröße ind Bytes: SLOW_BUFFER_SIZE = "
-    echo $SLOW_BUFFER_SIZE
-    echo -n "Loops pro Sekunde SLOW_LOOPS_PER_SECOND = "
-    echo $SLOW_LOOPS_PER_SECOND
-    echo -n "Bytes pro Sekunde SLOW_BYTES_PER_SECOND = "
-    echo $SLOW_BYTES_PER_SECOND
-    echo -n "Schreibvorgänge pro Sekunde SLOW_DSYNCS_PER_SECOND = "
-    echo $SLOW_DSYNCS_PER_SECOND
-    echo -n "Zahl der Refreshes bevor auf die Ramdisk geschrieben wird: SLOW_NR_REFRESHS = "
-    echo $SLOW_NR_REFRESHS
+    echo -n "Puffergröße ind Bytes: BUFFER_SIZE = "
+    echo $BUFFER_SIZE
+    echo -n "Loops pro Sekunde LOOPS_PER_SECOND = "
+    echo $LOOPS_PER_SECOND
+    echo -n "Bytes pro Sekunde BYTES_PER_SECOND = "
+    echo $BYTES_PER_SECOND
+    echo -n "Anzahl der Kopien durch bufhrt ins RAM vor jedem Abspeichern auf Datenträger: NR_COPIES = "
+    echo $NR_COPIES
+    echo -n "Schreibvorgänge pro Sekunde DSYNCS_PER_SECOND = "
+    echo $DSYNCS_PER_SECOND
     echo -n "Wird die zu improvende Datei vor dem ersten Verarbeitungsdurchlauf defragmentiert? DEFRAG = "
     echo $DEFRAG
     echo -n "Im Fall von Bit-Identitätsverletzung, maximale Durchläufe der Wiederholungsschleife: NBI_MAX = "
@@ -256,8 +202,6 @@ print_status()
     CURRENT_TIME=$(date +"%H:%M")
     echo -n "Aktuelle Uhrzeit: "
     echo $CURRENT_TIME
-#    echo ""
-#    /boot/dietpi/dietpi-cpuinfo
     echo ""
     echo "Aktueller Stand der Bearbeitung (ca.-Angaben): "
     IMPROVED_FILES_SIZE=$(du -sb "$TARGET_PATH" | awk '{print $1}')
@@ -302,19 +246,6 @@ analyse_frag_and_defrag(){
 }
 
 
-# Fundamentale Funktion zur Überprüfung der Bit-Identität
-check_bit_identity(){
-    if cmp -s "$1" "$2"; then
-        echo "Die Dateien $1 und $2 sind Bit-identisch."
-    else
-        echo "############################################################################################"
-        echo "#               BIT IDENTITÄT VERLETZT - DAS SCRIPT $SCRIPTFILE WIRD BEENDET               #"
-        echo "############################################################################################"
-        nsc_cleanup
-        exit 1
-    fi
-}
-
 # Hilfsfunktion um das Schreiben auf den physischen Datenträger sicherzustellen
 force_writing(){
     echo "force_writing aufgerufen."
@@ -326,7 +257,7 @@ force_writing(){
     ensure_umount_and_mount
 }
 
-# Alternatives Verfahren: Sicherstellen der Bit-Identität mit Anwendung von langsamen Improven
+# Sicherstellen der Bit-Identität mit Anwendung von langsamen Improven
 check_and_ensure_bit_identity(){
     if cmp -s "$1" "$2"; then
         # if-Zweig (Bedingung: cmp -s "$1" "$2")
@@ -367,7 +298,7 @@ check_and_ensure_bit_identity(){
 }
 
 
-# Sicherstellen, dass der Mount-Point $MOUNT_PATH_TARGET ungemoutet udn wieder gemountet wird
+# Sicherstellen, dass der Mount-Point $MOUNT_PATH_TARGET ungemoutet und wieder gemountet wird
 ensure_umount_and_mount(){
     echo ""
     echo "Automatisches Unmounten und Mounten des Zieldatenträgers, um Schreiben auf den Datenträger zu erzwingen."
@@ -414,59 +345,6 @@ ensure_umount_and_mount(){
             break;    # optional exit 1
         fi
     done
-}
-
-# Funktionen zur Ramdisk-Behandlung
-# Neue alternative Methode zur Behandlung des ram
-create_ram(){
-    N_LOC="$1"
-    if [ "$RAM_METHOD" = "tmpfs" ]; then
-        echo "create_ram mit Parameter $1 nach tmpfs Methode aufgerufen."
-        WPATH_PRE="$WPATH"
-        if [ "$((N_LOC % 2))" -eq 0 ]; then
-            WPATH="$RAMDISK0"
-        else
-            WPATH="$RAMDISK1"
-        fi
-    elif [ "$RAM_METHOD" = "ext" ]; then
-        echo "create_ram mit Parameter $1 nach ext Methode aufgerufen."
-        mke2fs -t ext2 -O extents -vm0 "$DEV_RAM_PATH$N_LOC" $RAM_SIZE -b 1024
-        sleep $UFSLEEP
-        mkdir -v "$MNT_RAM_PATH$N_LOC"
-        mount -v "$DEV_RAM_PATH$N_LOC" "$MNT_RAM_PATH$N_LOC"
-        sleep $UFSLEEP
-        chmod --verbose a+rwx "$MNT_RAM_PATH$N_LOC"
-        WPATH_PRE="$WPATH"
-        WPATH="$MNT_RAM_PATH$N_LOC$SLASH"
-    else
-        echo "create ram mit Parameter $1 nach Filesystem-Methode aufgerufen."
-        mkdir -v "$FILESYSTEM_PATH$N_LOC"
-        WPATH_PRE="$WPATH"
-        WPATH="$FILESYSTEM_PATH$N_LOC$SLASH"
-    fi
-}
-
-destroy_ram(){
-    N_LOC="$1"
-    if [ "$RAM_METHOD" = "tmpfs" ]; then
-        echo "destroy_ram mit Parameter $1 nach tmpfs Methode aufgerufen."
-        if [ "$((N_LOC % 2))" -eq 0 ]; then
-            umount -v /mnt/nscram0/
-            sleep $UFSLEEP
-        else
-            umount -v /mnt/nscram1/
-            sleep $UFSLEEP
-        fi
-    elif [ "$RAM_METHOD" = "ext" ]; then
-        echo "destroy_ram mit Parameter $1 nach ext Methode aufgerufen."
-        umount -v "$DEV_RAM_PATH$N_LOC"
-        sleep $UFSLEEP
-        rmdir -v "$MNT_RAM_PATH$N_LOC"
-        rm -v "$DEV_RAM_PATH$N_LOC"
-    else
-        echo "destroy_ram mit Parameter $1 nach Filesystem-Methode aufgerufen."
-        rmdir -v "$FILESYSTEM_PATH$N_LOC"
-    fi
 }
 
 
@@ -558,7 +436,7 @@ else
 fi
 
 # Setzen der Pfad-Varialben "SOURCE_PATH", "TARGET_PATH" und "ETC_PATH"
-# Durchlaufe alle nicht gemounteten Laufwerke
+# Durchlaufe dazu alle nicht gemounteten Laufwerke
 echo ""
 echo "Mounten von Datenträgern und Auslesen wichtiger Pfade"
 echo "Einzelne mount und umount Fehlermeldungen im folgenden sind unkritisch."
@@ -673,46 +551,6 @@ else
     # Das Verzeichnis existiert nicht, lege es an
     mkdir -p "$TARGET_TMP_PATH"
     echo "Das Verzeichnis $TARGET_TMP_PATH wurde erstellt."
-fi
-
-# Umgang mit möglichen Überbleibseln aus den Ramdisks bei statischer tpmfs Methode
-# Überprüfe, ob das Verzeichnis $RAMDISK0 existiert
-if [ -d "$RAMDISK0" ]; then
-    # Prüfe, ob Dateien im Verzeichnis vorhanden sind
-    if [ "$(ls -A "$RAMDISK0")" ]; then
-        rm -v "$RAMDISK0"*
-        echo "Dateien im Verzeichnis $RAMDISK0 wurden gelöscht."
-    else
-        echo "Das Verzeichnis $RAMDISK0 ist erwartungsgemäß leer."
-    fi
-else
-    echo "Das Verzeichnis $RAMDISK0 existiert nicht. Unproblematisch bei den Methoden ext und filesystem."
-fi
-
-# Überprüfe, ob das Verzeichnis $RAMDISK1 existiert
-if [ -d "$RAMDISK1" ]; then
-    # Prüfe, ob Dateien im Verzeichnis vorhanden sind
-    if [ "$(ls -A "$RAMDISK1")" ]; then
-        rm -v "$RAMDISK1"*
-        echo "Dateien im Verzeichnis $RAMDISK1 wurden gelöscht."
-    else
-        echo "Das Verzeichnis $RAMDISK1 ist erwartungsgemäß leer."
-    fi
-else
-    echo "Das Verzeichnis $RAMDISK1 existiert nicht. Unproblematisch nur bei den Methoden ext und filesystem."
-fi
-
-# Überprüfe, ob das Verzeichnis $FILESYSTEM_PATH existiert
-if [ -d "$FILESYSTEM_PATH" ]; then
-    # Prüfe, ob Dateien im Verzeichnis vorhanden sind
-    if [ "$(ls -A "$FILESYSTEM_PATH")" ]; then
-        rm -rv "$FILESYSTEM_PATH"*
-        echo "Dateien im Verzeichnis $FILESYSTEM_PATH wurden gelöscht."
-    else
-        echo "Das Verzeichnis $FILESYSTEM_PATH ist erwartungsgemäß leer."
-    fi
-else
-    echo "Das Verzeichnis $FILESYSTEM_PATH existiert nicht. Unproblematisch bei den Methoden tmpfs und ext."
 fi
 
 
@@ -875,95 +713,40 @@ for DIR in "$SOURCE_PATH"/*; do
             echo "$FILENAME"
 
             # große for-Schleife mit 5 zu unterscheidenden Fällen
-            for ((N=1; N<=NMAX; N++)); do
+            for ((N=1; N<=NMAX_PHYS; N++)); do
 
-                # N = 1 von _source nach RAM
+                # N = 1 von _source nach phys-tmp
                 if [ $N -eq 1 ]; then
 
                     echo ""
                     echo ""
-                    echo "Erster improvefile-Durchlauf für diese Musikdatei (schnelles Verfahren; von _source ins RAM)"
+                    echo "Erster improvefile-Durchlauf für diese Musikdatei (von $SOURCE_PATH nach $TARGET_TMP_PATH)"
                     echo ""
                     print_kurzstatus
-
-                    # Ramdisk bereitstellen
-                    create_ram $N
 
                     # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
-                    analyse_frag_and_defrag "$SOURCE_PATH$DIRNAME$SLASH$FILENAME"
+                    if [ $DEFRAG -eq 1 ]; then 
+                        analyse_frag_and_defrag "$SOURCE_PATH$DIRNAME$SLASH$FILENAME"
+                    fi
 
-                    # improvefile-Aufruf für die laufende Datei zum ersten Mal
-                    schaffwas_fast "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
-                    check_bit_identity "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
-
-                    # Sicherstellen, dass die Datei $TMP1 nicht nur in den Cache geschrieben wird
-                    sync
-                    sleep $UFSLEEP
-                    vmtouch -e "$WPATH$TMP$N"
-                    sleep $UFSLEEP
-
-                # N >= NMAX_RAM von RAM nach RAM
-                elif [ $N -le $NMAX_RAM ]; then
-
-                    echo ""
-                    echo ""
-                    echo "Mehrfachanwendung von improvefile Nr. $N (schnelles Verfahren; von RAM nach RAM)"
-                    echo ""
-                    print_kurzstatus
-
-                    # Zähler und Ramdisk bereitstellen ($WPATH wird in create_ram belegt)
-                    NPRE=$(($N - 1))
-                    create_ram $N
-
-                    # improvefile-Aufruf
-                    schaffwas_fast "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
-                    check_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
-
-                    # Sicherstellen, dass die Datei $TMP$N nicht nur in den Cache geschrieben wird
-                    sync
-                    sleep $UFSLEEP
-                    vmtouch -e "$WPATH$TMP$N"
-                    sleep $UFSLEEP
-
-                    # Aufräumen
-                    shred "$WPATH_PRE$TMP$NPRE"
-                    rm -v "$WPATH_PRE$TMP$NPRE"
-                    destroy_ram $NPRE
-
-                # N = NMAX_RAM + 1 von RAM nach phys-tmp
-                elif [ $N -eq $((NMAX_RAM + 1)) ]; then
-
-                    echo ""
-                    echo ""
-                    echo "Mehrfachanwendung von improvefile Nr. $N (langsames Verfahren; von RAM nach phys-tmp)"
-                    echo ""
-                    print_kurzstatus
-
-                    # Zähler und WPATH bereitstellen
-                    NPRE=$(($N - 1))
-                    WPATH_PRE="$WPATH"
                     WPATH="$TARGET_TMP_PATH"
 
-                    # improvefile-Aufruf
-                    schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
+                    # improvefile-Aufruf für die laufende Datei zum ersten Mal
+                    schaffwas "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
 
                     # Sicherstellen, dass die Datei $WPATH$TMP$N nicht nur in den Cache geschrieben wird
                     force_writing "$WPATH$TMP$N"
 
                     # Prüfung auf Bit-Identität, Behebungsversuche durch Wiederholungsschleife sonst Abbruch des Hautpscripts.
-                    check_and_ensure_bit_identity "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
+                    check_and_ensure_bit_identity "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
 
-                    # Aufräumen in der Ramdisk
-                    shred "$WPATH_PRE$TMP$NPRE"
-                    rm -v "$WPATH_PRE$TMP$NPRE"
-                    destroy_ram $NPRE
 
-                # N > NMAX_RAM + 1 und N <= NMAX - 1 von phys-tmp nach phys-tmp
-                elif [ "$N" -gt "$((NMAX_RAM + 1))" ] && [ "$N" -le "$((NMAX - 1))" ]; then
+                # N > 1 und N < NMAX_PHYS
+                elif [ "$N" -gt 1 ] && [ "$N" -lt "$((NMAX_PHYS))" ]; then
 
                     echo ""
                     echo ""
-                    echo "Mehrfachanwendung von improvefile Nr. $N (langsames Verfahren; von phys-tmp nach phys-tmp)"
+                    echo "Mehrfachanwendung von improvefile Nr. $N (von $TARGET_TMP_PATH nach $TARGET_TMP_PATH)"
                     echo ""
                     print_kurzstatus
 
@@ -973,7 +756,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     WPATH="$TARGET_TMP_PATH"
 
                     # improvefile-Aufruf
-                    schaffwas_slow "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
+                    schaffwas "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
 
                     # Sicherstellen, dass die Datei $WPATH$TMP$N nicht nur in den Cache geschrieben wird
                     force_writing "$WPATH$TMP$N"
@@ -987,7 +770,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     ensure_umount_and_mount
 
                 # N = NMAX von phys-tmp nach _improved
-                else
+                else # N = NMAX_PHYS
 
                     echo ""
                     echo ""
@@ -1000,7 +783,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     WPATH_PRE="$WPATH"
 
                     echo "$WPATH$TMP$NPRE"
-                    schaffwas_slow "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
+                    schaffwas "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
 
                     # Sicherstellen, dass die Datei $WPATH$TMP$N nicht nur in den Cache geschrieben wird
                     force_writing "$TARGET_PATH$DIRNAME$SLASH$FILENAME"

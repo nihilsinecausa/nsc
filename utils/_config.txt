@@ -1,25 +1,14 @@
 # Config-Datei zum Setzen von Variablen-Werten für die nsc.sh Scriptverarbeitung
-# Werden Variablen hier nicht belegt oder die Datei nicht gefunden, werden 
+# Werden Variablen hier nicht belegt oder falls diese Datei nicht gefunden wird, werden 
 # Default-Werte genommen.
-#
-# Anzahl der improvefile-Durchläufe pro Audiodatei
-# für schnelle Improvefile-Durchläufe im RAM, Wert muss >= 2 sein, default 9
-# für besonders gute Ergebnissse NMAX_RAM=64
-NMAX_RAM=2
-# für langsame Improvefile-Durchläufe auf dem Zieldatenträger, Wert muss >=3 sein, default 3
+# Kommentare mit vorgestelltem '#' müssen im Folgenden immer die ganze Zeile auskommentieren
+
+# für Improvefile-Durchläufe auf dem Zieldatenträger, Wert muss >=2 sein, default 3
 # für besonders gute Ergebnisse NMAX_PHYS=6
 NMAX_PHYS=3
 
-# Einstellung der RAM-Methode. Folgende Werte sind möglich:
-# RAM_METHOD=fileystem (default für ramroot Modus)
-# RAM_METHOD=tmpfs (default) Standard tmpfs Ramdisk Methode
-# RAM_METHOD=ext dynamische ext Ramdisk Methode 
-RAM_METHOD=filesystem
-# Größe des RAM (wird nur bei der dynamischen Methode berücksichtigt), default 2G
-RAM_SIZE=2G
-
 # Soll das Script vor jedem Improven eine Defragmentierung der resultierenden Datei vornehmen?
-# DEFRAG=0 für nein (default), anderenfalls DEFRAG=1 für ja. Weglassen fürht zu default.
+# DEFRAG=0 für nein (default), anderenfalls DEFRAG=1 für ja. Weglassen führt zu default.
 # Hinweis: von einem Defragmentieren auf dem Zieldatenträger wird grundsätzlich abgeraten. 
 #    Wenn der Quellordner _A_SOURCE auf demselben Datenträger liegt wie der Zielordner _IMPROVED, dann DEFRAG ausgeschaltet lassen.
 DEFRAG=0
@@ -28,46 +17,34 @@ DEFRAG=0
 # DELETE_SOURCE=0 für nein (default), DELETE_SOURCE=1 für ja. Weglassen führt zu default.
 DELETE_SOURCE=0
 
-# Variablen für das bufhrt Verfahren. 
-# Folgender Satz von Variablen mit der Vorsilbe "FAST" wird für die schnellen Durchläufe NMAX-1 verwendet, 
-# bei welchen auf die temporäre Ramdisk geschrieben wird
 
+# Variablen für das bufhrt Verfahren
+#
 # Puffer im RAM für das bufhrt-Verfahren selbst, default 536870912
-FAST_BUFFER_SIZE=536870912
+BUFFER_SIZE=536870912
 
-# Schleifenrate: Diesen Wert so setzen, dass möglichst wenige "delayed block" Meldungen ausgegeben werden, default 2000
+# Schleifenrate: Diesen Wert so setzen, dass möglichst wenige "delayed block" Meldungen ausgegeben werden, default 1024
 FAST_LOOPS_PER_SECOND=16384
 
-# Bytes pro Sekunde: Dieser Wert bestimmt die Laufzeit, default 8192000
-FAST_BYTES_PER_SECOND=536870912
+# Bytes pro Sekunde: Dieser Wert bestimmt die Laufzeit, default 8290304
+BYTES_PER_SECOND=536870912
 
-# Wert zum Schreiben auf den Zieldatenträger, hier Ramdisk, default 100
-FAST_DSYNCS_PER_SECOND=16384
+# Wie oft pro Sekunde soll auf den Zieldatenträger geschrieben werden? Default 32
+# Hinweis: Für schnelle Datenträger kann dieser auf 100 gesetzt werden.
+#     Bei langsamen Datenträgern wird ein Wert von 16 empfohlen
+DSYNCS_PER_SECOND=16384
 
 # Kopieren durch bufhrt in ein separates Speichersegment im RAM
-FAST_NR_COPIES=24
+NR_COPIES=24
 
-# Refreshs im L1 Cache der CPU, bevor auf den Datenträger geschrieben wird, default 3
-# Ältere Option, wird seit 15.03.2024 in frankl_stereo nicht mehr verwendet.
-FAST_NR_REFRESHS=3
-
-# Folgender Satz von Variablen mit der Vorsilbe "SLOW" wird für den letzten langsamen Durchlauf verwedet, 
-# bei welchem auf das Zielmedium geschrieben wird. Erläuterungen und default-Werte s.o. bei "FAST"
-
-SLOW_BUFFER_SIZE=536870912
-SLOW_LOOPS_PER_SECOND=16384
-SLOW_BYTES_PER_SECOND=33554432
-SLOW_NR_COPIES=24
-SLOW_DSYNCS_PER_SECOND=16384
-SLOW_NR_REFRESHS=1
 
 # Wartezeiten. Hier können die betreffenden Sekundenwerte angegeben werden. Auch 0 ist erlaubt.
-
+#
 # Wie viele Sekunden soll das Script warten, bevor die ersten Schreibvorgänge gestartet werden?
 # (z.B. um Schaltnetzteile auszuschalten), default 60
 LSLEEP=1
 
-# Kurzschlaf, default 5 
+# Kurzschlaf, default 10
 # Kann bei Mounting-Problemen erhöht werden
 FSLEEP=10
 

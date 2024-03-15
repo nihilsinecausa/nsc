@@ -11,7 +11,7 @@
 ###################################################################################################
 
 WPATH="/root/nsc/"
-SCRIPTFILE="./nsc_main.sh"
+SCRIPTFILE="./nsc_main2.sh"
 CHECK_STORAGE=0
 
 # Prüfen, ob mehrer CPU Core 2 zur Verfügung steht:
@@ -55,7 +55,7 @@ if [ "$CHECK_STORAGE" != "1" ]; then
     rm -f nohup.out
 fi
 
-if pgrep -x "nsc_main.sh" > /dev/null
+if pgrep -x "nsc_main2.sh" > /dev/null
 then
     echo "Das Hauptscript kann nicht gestartet werden, da es bereits läuft."
     echo "Falls gewünscht, kann das Hauptscript mit nsc_kill.sh angehalten werden."
