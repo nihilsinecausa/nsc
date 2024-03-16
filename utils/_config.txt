@@ -24,18 +24,18 @@ DELETE_SOURCE=0
 BUFFER_SIZE=536870912
 
 # Schleifenrate: Diesen Wert so setzen, dass möglichst wenige "delayed block" Meldungen ausgegeben werden, default 1024
-FAST_LOOPS_PER_SECOND=16384
+LOOPS_PER_SECOND=1024
 
 # Bytes pro Sekunde: Dieser Wert bestimmt die Laufzeit, default 8290304
-BYTES_PER_SECOND=536870912
+BYTES_PER_SECOND=8388608
 
 # Wie oft pro Sekunde soll auf den Zieldatenträger geschrieben werden? Default 32
 # Hinweis: Für schnelle Datenträger kann dieser auf 100 gesetzt werden.
 #     Bei langsamen Datenträgern wird ein Wert von 16 empfohlen
-DSYNCS_PER_SECOND=16384
+DSYNCS_PER_SECOND=32
 
-# Kopieren durch bufhrt in ein separates Speichersegment im RAM
-NR_COPIES=24
+# Kopieren durch bufhrt in ein separates Speichersegment im RAM (default 16)
+NR_COPIES=16
 
 
 # Wartezeiten. Hier können die betreffenden Sekundenwerte angegeben werden. Auch 0 ist erlaubt.

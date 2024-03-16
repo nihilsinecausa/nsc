@@ -66,7 +66,7 @@ MAX_M_ATTEMPTS=10
 M_ATTEMPT=0
 
 # Default-Werte für die Durchführung
-NMAX_PHYS=3
+NMAX=3
 BUFFER_SIZE=536870912
 LOOPS_PER_SECOND=1024
 BYTES_PER_SECOND=8290304
@@ -168,8 +168,8 @@ print_basic_info()
     echo ""
     echo -n "Sollen Quelldateien nach erfolgreichem Improven gelöscht werden? DELETE_SOURCE = "
     echo $DELETE_SOURCE
-    echo -n "Anzahl der Durchläufe für jede Musikdatei: NMAX_PHYS = "
-    echo $NMAX_PHYS
+    echo -n "Anzahl der Durchläufe für jede Musikdatei: NMAX = "
+    echo $NMAX
     echo -n "Puffergröße ind Bytes: BUFFER_SIZE = "
     echo $BUFFER_SIZE
     echo -n "Loops pro Sekunde LOOPS_PER_SECOND = "
@@ -226,6 +226,14 @@ print_kurzstatus()
     PROGRESS=$((NEWLY_IMPROVED_FILES_SIZE *100 / TO_BE_IMPROVED_FILES_SIZE))
     echo "$PROGRESS % von 100 %"
     echo ""
+}
+
+print_file_settings()
+{
+    echo -n "Input-Datei: "
+    echo "$1"
+    echo -n "Output-Datei: "
+    echo "$2"
 }
 
 # Fragmentierung der Quelldatei überprüfen und defragmentieren, wenn DEFRAG=1 gesetzt ist
@@ -523,7 +531,6 @@ fi
 # Diese Berechnungen müssen nach dem Einlesen erfolgen.
 FORMER_IMPROVED_FILES_SIZE=$(du -sb "$TARGET_PATH" | awk '{print $1}')
 TO_BE_IMPROVED_FILES_SIZE=$(du -sb "$SOURCE_PATH" | awk '{print $1}')
-NMAX=$((NMAX_RAM + NMAX_PHYS))
 # Umgang mit den mount options
 if [ $AUTO_MOUNT -eq 1 ]; then
      REMOUNT_OPTION="-o rw $DEV_PATH_TARGET"
@@ -712,8 +719,8 @@ for DIR in "$SOURCE_PATH"/*; do
             echo "Folgende Musikdatei wird gleich improvt: "
             echo "$FILENAME"
 
-            # große for-Schleife mit 5 zu unterscheidenden Fällen
-            for ((N=1; N<=NMAX_PHYS; N++)); do
+            # for-Schleife zur Bearbeitung einer Musikdatei mit 3 zu unterscheidenden Fällen
+            for ((N=1; N<=NMAX; N++)); do
 
                 # N = 1 von _source nach phys-tmp
                 if [ $N -eq 1 ]; then
@@ -730,6 +737,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     fi
 
                     WPATH="$TARGET_TMP_PATH"
+                    print_file_settings "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
 
                     # improvefile-Aufruf für die laufende Datei zum ersten Mal
                     schaffwas "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
@@ -741,8 +749,8 @@ for DIR in "$SOURCE_PATH"/*; do
                     check_and_ensure_bit_identity "$SOURCE_PATH$DIRNAME$SLASH$FILENAME" "$WPATH$TMP$N"
 
 
-                # N > 1 und N < NMAX_PHYS
-                elif [ "$N" -gt 1 ] && [ "$N" -lt "$((NMAX_PHYS))" ]; then
+                # N > 1 und N < NMAX
+                elif [ "$N" -gt 1 ] && [ "$N" -lt "$((NMAX))" ]; then
 
                     echo ""
                     echo ""
@@ -754,6 +762,7 @@ for DIR in "$SOURCE_PATH"/*; do
                     NPRE=$(($N - 1))
                     WPATH_PRE="$WPATH"
                     WPATH="$TARGET_TMP_PATH"
+#                    print_file_settings "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
 
                     # improvefile-Aufruf
                     schaffwas "$WPATH_PRE$TMP$NPRE" "$WPATH$TMP$N"
@@ -767,10 +776,10 @@ for DIR in "$SOURCE_PATH"/*; do
                     # Aufräumen
                     shred "$WPATH_PRE$TMP$NPRE"
                     rm -v "$WPATH_PRE$TMP$NPRE"
-                    ensure_umount_and_mount
+#                    ensure_umount_and_mount
 
                 # N = NMAX von phys-tmp nach _improved
-                else # N = NMAX_PHYS
+                else # N = NMAX
 
                     echo ""
                     echo ""
@@ -781,11 +790,11 @@ for DIR in "$SOURCE_PATH"/*; do
                     # Zähler und WPATH bereitstellen
                     NPRE=$(($N - 1))
                     WPATH_PRE="$WPATH"
+                    print_file_settings "$WPATH_PRE$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
 
-                    echo "$WPATH$TMP$NPRE"
                     schaffwas "$WPATH$TMP$NPRE" "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
 
-                    # Sicherstellen, dass die Datei $WPATH$TMP$N nicht nur in den Cache geschrieben wird
+                    # Sicherstellen, dass die Datei "$TARGET_PATH$DIRNAME$SLASH$FILENAME" nicht nur in den Cache geschrieben wird
                     force_writing "$TARGET_PATH$DIRNAME$SLASH$FILENAME"
 
                     # Prüfung auf Bit-Identität, Behebungsversuche durch Wiederholungsschleife sonst Abbruch des Hautpscripts.
@@ -804,12 +813,12 @@ for DIR in "$SOURCE_PATH"/*; do
                     # Aufräumen
                     shred "$WPATH$TMP$NPRE"
                     rm -v "$WPATH$TMP$NPRE"
-                    ensure_umount_and_mount
+#                    ensure_umount_and_mount
 
                     echo "improvefile-Anwendung für diese Musikdatei  abgeschlossen"
-                fi # 5 Fälle abgeschlossen
+                fi # 3 Fälle abgeschlossen
             done # for-Schleife NMAX Dateibehandlung abgeschlossen
-        done # for-Schleife Behandlung aller Dateien im Albumordner
+        done # for-Schleife Behandlung aller Dateien im Albumordner abgeschlossen
         # Für den Fall, dass der Albumordner leer ist, kann er gelöscht werden
         if [ "$DELETE_SOURCE" -eq 1 ]; then
             rmdir -v "$SOURCE_PATH$DIRNAME"
