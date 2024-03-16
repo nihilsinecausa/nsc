@@ -4,7 +4,7 @@
 # Kommentare mit vorgestelltem '#' müssen im Folgenden immer die ganze Zeile auskommentieren
 
 # für Improvefile-Durchläufe auf dem Zieldatenträger, Wert muss >=2 sein, default 3
-# für besonders gute Ergebnisse NMAX_PHYS=6
+# für besonders gute Ergebnisse NMAX_PHYS=8
 NMAX=3
 
 # Soll das Script vor jedem Improven eine Defragmentierung der resultierenden Datei vornehmen?

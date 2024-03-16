@@ -1,5 +1,5 @@
 #!/bin/bash
-SCRIPTTEXT="Script nsc.sh, Version vom 15.03.2024"
+SCRIPTTEXT="Script nsc.sh, Version vom 16.03.2024"
 # Basierend auf frankl_stereo Version vom 15.03.2024
 SCRIPTFILE="./nsc_main.sh"  # Der Name dieses Scripts, um eine Kopie im Etc-Pfad speichern zu können
 # basierend auf frankl-stereo utils (GNU Licence)
@@ -581,7 +581,11 @@ else
     MAX_FILE_SIZE=$MAX_SOURCE_FILE_SIZE
 fi
 
-REMAINING_CAPACITY=$((CAPACITY - FORMER_IMPROVED_FILES_SIZE - TO_BE_IMPROVED_FILES_SIZE - 2*MAX_FILE_SIZE - SPARE_CAPACITY))
+if [ "$DELETE_SOURCE" -eq 1 ]; then
+    REMAINING_CAPACITY=$((CAPACITY - FORMER_IMPROVED_FILES_SIZE - TO_BE_IMPROVED_FILES_SIZE - 2*MAX_FILE_SIZE - SPARE_CAPACITY))
+else
+    REMAINING_CAPACITY=$((CAPACITY - FORMER_IMPROVED_FILES_SIZE - 2*TO_BE_IMPROVED_FILES_SIZE - 2*MAX_FILE_SIZE - SPARE_CAPACITY))
+fi
 
 echo ""
 echo "Speichersituation, Angaben in Byte"
