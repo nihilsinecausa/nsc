@@ -2,6 +2,15 @@ Dieses nsc Script-Paket dient zur Unterstützung von improvefile auf einem Linux
 Es basiert auf frankl's stereo utilities. Es gilt die GNU License (cf License.txt)
 Autor: Dr. Harald Scherer (nihil.sine.causa im Forum aktives-hoeren.de)
 
+16.03.2024
+Aufsetzen auf der neuen Version von frankl_stereo vom 15.03.2024 mit eigenem Mehrfach-Improven im RAM.
+Hauptscript zurückgebaut: 
+- Mehrfachimproven im RAM mit --number-copies eingebaut, --nr-refreshs zurückgebaut.
+- Keine eigenen RAM-Methoden mehr, insbes. filesystem, ext und tmpfs RAM Methoden entfernt.
+- NMAX bezieht sich nur noch auf physisches Speichern, insbes. NMAX_RAM und NMAX_PHYS entfernt.
+- Es gibt nur noch eine improvefile-Routine "schaffwas", insbes. "fast_" und "slow_" Varianten entfernt.
+- _config.txt entsprechend angepasst. D.h. _config.txt sollte von den Benutzern ausgetauscht werden. 
+
 14.03.2024
 Verbesserter Umgang mit nohup.out. Fehlerbehebungen. Vermeidung von "rm -r" auf dem Zieldatenträger.
 

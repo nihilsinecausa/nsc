@@ -64,7 +64,7 @@ Hinweis: Auf dem Zieldatenträger muss bei der Bearbeitung noch mindestens sovie
 
 Alle Aufrufe als root 
 
-    "nsc.sh"
+    nsc.sh
 
 Damit startet das Hauptscript "nsc_main.sh" im Hintergrund und die Bearbeitung läuft automatisch ab.
 
@@ -73,12 +73,12 @@ Optional kann der Aufruf mit dem Parameter "-check" erfolgen. Dann werden ledigl
 
 Um einen Überblick über die Bearbeitung zu bekommen, kann man mit dem Aufruf
 
-    "info.sh"
+    info.sh
 
 Einblick in die laufende Logdatei bekommen. Optional kann eine Zeilenzahl mit angegeben werden.
 Beispiel:
 
-    "info.sh 70"
+    info.sh 70
 
 gibt die 70 letzten Zeilen der laufenden Logdatei aus. 
 
@@ -90,7 +90,11 @@ Am Ende der Bearbeitung steht in der laufenden Logdatei:
 #                                 nsc_main.sh SCRIPT ENDE                                  #
 ############################################################################################
 
-Dann kann man den Linux-Rechner ausschalten mit
+Wenn gewünscht, kann man die Verarbeitung des Hauptscripts manuell abbrechen mit dem Befehl:
+
+   nsc_kill.sh
+
+Am Ende kann man den Linux-Rechner ausschalten mit
 
    poweroff
 

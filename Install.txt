@@ -25,23 +25,6 @@ git clone https://github.com/nihilsinecausa/nsc.git
 cd nsc
 cp bin/* /usr/local/bin
 
-Für die Standard-Ramdisk Methode benötigt das Scriptset zwei Ramdisks.
-Hierzu die Datei fstab editieren, z.B. mit dem Befehl
-
-nano /etc/fstab
-
-folgende Zeilen eintragen, abspeichern und anschließend rebooten
-
-    tmpfs    /mnt/nscram0    tmpfs    defaults,size=2048M    0    0
-    tmpfs    /mnt/nscram1    tmpfs    defaults,size=2048M    0    0
-
-Ein Beispiel für eine solche fstab-Datei kann man sich wie folgt ansehen:
-
-cat /root/nsc/utils/fstab_example
-
-Für den RamRoot-Modus von Linux Arch ist diese fstab Anpassung nicht erforderlich.
-Hier wird empfohlen in dern _config.txt die "filesystem" Methode auszuwählen.
-
 
     ÜBERPRÜFUNG AUF UPDATES
 

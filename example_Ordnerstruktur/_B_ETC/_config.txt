@@ -5,7 +5,7 @@
 
 # für Improvefile-Durchläufe auf dem Zieldatenträger, Wert muss >=2 sein, default 3
 # für besonders gute Ergebnisse NMAX_PHYS=6
-NMAX_PHYS=3
+NMAX=3
 
 # Soll das Script vor jedem Improven eine Defragmentierung der resultierenden Datei vornehmen?
 # DEFRAG=0 für nein (default), anderenfalls DEFRAG=1 für ja. Weglassen führt zu default.
