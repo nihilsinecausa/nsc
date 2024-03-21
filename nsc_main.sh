@@ -276,7 +276,7 @@ check_and_ensure_bit_identity(){
         for ((NBI=1; NBI<=NBI_MAX; NBI++)); do
             echo "Schleifendurchlauf Nr. $NBI."
             rm -v "$2"
-            schaffwas_slow "$1" "$2"
+            schaffwas "$1" "$2"
             force_writing "$2"
 
             # Überprüfen der Bit-Identität
