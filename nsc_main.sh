@@ -265,13 +265,35 @@ force_writing(){
     ensure_umount_and_mount
 }
 
+# Hilfsfunktion für die Feststellung der Bit-Identität
+check_files() {
+    if cmp -s "$1" "$2"; then
+        echo "Die Dateien $1 und $2 sind Bit-identisch."
+        return 0  # Erfolg
+    else
+        echo "Die Dateien $1 und $2 sind NICHT Bit-identisch. Starte Wiederholungsschleife zum Vergleich."
+        return 1  # Misserfolg
+    fi
+}
+
 # Sicherstellen der Bit-Identität mit Anwendung von langsamen Improven
 check_and_ensure_bit_identity(){
-    if cmp -s "$1" "$2"; then
-        # if-Zweig (Bedingung: cmp -s "$1" "$2")
-        echo "Die Dateien $1 und $2 sind Bit-identisch."
-    else
-        # else-Zweig (Bedingung: cmp -s "$1" "$2" nicht erfolgreich)
+    local MAX_ATTEMPTS=5
+    local ATTEMPTS=0
+
+    while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+        if check_files "$1" "$2"; then
+            echo "Die Dateien $1 und $2 sind Bit-identisch."
+            return 0
+        else
+            echo "Warte auf erfolgreichen Vergleich..."
+            sleep $FSLEEP  # Warten, um die Geschwindigkeit zu drosseln
+            ((ATTEMPTS++))
+        fi
+    done
+
+    if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
+        # Bit-Identität auch nach längerem Warten nicht gegeben
         echo "Die Dateien $1 und $2 sind NICHT Bit-identisch. Starte Wiederholungsschleife zum Improven."
         for ((NBI=1; NBI<=NBI_MAX; NBI++)); do
             echo "Schleifendurchlauf Nr. $NBI."
